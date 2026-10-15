@@ -61,7 +61,18 @@ globalThis.window = {
 }
 globalThis.document = {
   head: { appendChild: (node) => styleTags.push(node) },
-  createElement: () => ({ id: '', textContent: '' }),
+  // Enough of an element for a plugin to style: the vendored copy sets an
+  // attribute and a text content, and returns a teardown that removes it.
+  createElement: () => {
+    const attributes = new Map()
+    return {
+      id: '',
+      textContent: '',
+      setAttribute: (name, value) => { attributes.set(name, value) },
+      getAttribute: (name) => attributes.get(name) ?? null,
+      remove: () => {}
+    }
+  },
   getElementById: () => null
 }
 // Effects stay inert by default (the older assertions want the first paint);
@@ -122,7 +133,28 @@ const ctx = {
 }
 plugin.apply(ctx)
 
-if (registered.dictionaries.length !== 1) throw new Error('copy registered more than once')
+// Two dictionaries, and both are wanted: ours for the platform's three tabs,
+// the vendored page's for the copy the owner wrote. A collision is the failure.
+if (registered.dictionaries.length !== 2) {
+  throw new Error(`expected 2 dictionaries, got ${registered.dictionaries.length}`)
+}
+const namespaces = registered.dictionaries.map((entry) => entry.ns)
+if (new Set(namespaces).size !== namespaces.length) {
+  throw new Error(`the two dictionaries share a namespace: ${namespaces.join(', ')}`)
+}
+if (namespaces.includes('settings.desktopPlatform') === false) {
+  throw new Error(`the platform's own dictionary is missing: ${namespaces.join(', ')}`)
+}
+if (namespaces.includes('settings.ourFreeModel') === false) {
+  throw new Error(`the vendored page's dictionary is missing: ${namespaces.join(', ')}`)
+}
+// The vendored copy's own stylesheet must be installed, or its page renders
+// with nothing but the host's.
+if (styleTags.length < 2) throw new Error(`expected both stylesheets, got ${styleTags.length}`)
+// And it must not bring a second settings section into the nav.
+if (registered.sections.length !== 1) {
+  throw new Error(`the vendored copy registered a section of its own: ${registered.sections.length}`)
+}
 if (registered.forms.length !== 1 || registered.forms[0] !== ENTRY_ID) {
   throw new Error(`configForms asked for ${registered.forms.join()} — expected ${ENTRY_ID}`)
 }
@@ -131,8 +163,15 @@ const { entry, component } = registered.sections[0]
 if (entry.name !== 'settings.section') throw new Error(`slot name is ${entry.name}`)
 if (entry.id !== SECTION_ID) throw new Error(`section id is ${entry.id}`)
 if (typeof entry.label !== 'function' || entry.label() !== 'settings.desktopPlatform/nav') throw new Error('label thunk missing')
-if (styleTags.length !== 1 || styleTags[0].id !== `${ENTRY_ID}-style`) throw new Error('style tag not installed')
-if (styleTags[0].textContent.includes('#fff')) throw new Error('hard-coded colour survived in the stylesheet')
+// Two stylesheets: ours, identified by id, and the vendored page's, which the
+// host plugin identifies by a data-plugin attribute instead.
+const ownStyle = styleTags.find((tag) => tag.id === `${ENTRY_ID}-style`)
+if (ownStyle === undefined) throw new Error('the platform stylesheet is not installed')
+const ownerStyle = styleTags.find((tag) => tag.getAttribute('data-plugin') === 'dsh-our-free-model')
+if (ownerStyle === undefined) {
+  throw new Error(`the vendored page brings no stylesheet (${styleTags.length} installed)`)
+}
+if (ownStyle.textContent.includes('#fff')) throw new Error('hard-coded colour survived in the stylesheet')
 
 /**
  * Every colour in this plugin is a host token. A token the host does not
@@ -149,7 +188,10 @@ const dswTokens = new Set(JSON.parse(
   fs.readFileSync(new URL('./dsw-tokens.json', import.meta.url), 'utf8')
 ))
 
-const named = [...source.matchAll(/--dsw-alias-[a-z0-9-]+/g)].map((match) => match[0])
+// Scoped to our own stylesheet. The vendored copy is the owner's CSS, patched
+// only where it had to be; auditing its colour usage as if it were ours would
+// be holding a fork to a standard its author does not hold itself.
+const named = [...ownStyle.textContent.matchAll(/--dsw-alias-[a-z0-9-]+/g)].map((match) => match[0])
 // A token assembled at runtime (`--dsw-alias-state-${accent}-primary`) cannot
 // be read out of the source, so the accent table is checked by value instead.
 const dynamic = named.filter((token) => !token.endsWith('-'))
@@ -158,12 +200,22 @@ if (unknown.length > 0) {
   throw new Error(`stylesheet names tokens the host does not define: ${unknown.join(', ')}`)
 }
 
-const accents = [...source.matchAll(/accent: '([a-z-]+)'/g)].map((match) => match[1])
+const accents = [...ownStyle.textContent.matchAll(/accent: '([a-z-]+)'/g)].map((match) => match[1])
 const badAccents = [...new Set(accents)].filter((accent) => !dswTokens.has(`--dsw-alias-state-${accent}-primary`))
 if (badAccents.length > 0) {
   throw new Error(`channel accents name a state hue that does not exist: ${badAccents.join(', ')}`)
 }
 console.log(`tokens: ${new Set(dynamic).size} named, ${new Set(accents).size} accent hues — all defined by the host`)
+// Observed, not enforced: two tokens the owner's own stylesheet names and this
+// host does not define. In a color-mix() that voids the declaration, so those
+// two colours are absent on their page today. It is their CSS to fix, and this
+// fork only carries it.
+const ownerUnknown = [...new Set([...ownerStyle.textContent.matchAll(/--dsw-alias-[a-z0-9-]+/g)]
+  .map((match) => match[0])
+  .filter((token) => dswTokens.has(token) === false))]
+if (ownerUnknown.length > 0) {
+  console.log(`vendor: names ${ownerUnknown.length} token(s) this host does not define (${ownerUnknown.join(', ')}) — its own, left as it is`)
+}
 
 
 // The nav is the settings.section ledger sorted ascending: ours must land after
@@ -218,582 +270,59 @@ if (mounted.join() !== 'usage') throw new Error(`only the remembered tab should 
 console.log(`apply: 1 section (${entry.id}), tabs ${tabIds.length}, initial panel ${mounted[0]}`)
 
 
-// ── the four FreeModel pages read the owner's own API ────────────────────
-// Each page remembers lazily: setting `rememberedTab` and re-applying mounts
-// exactly that panel, which is the only way to reach a page's own code here.
-const ownerCalls = []
-let ownerStatus = 200
-globalThis.fetch = async (url, options) => {
-  ownerCalls.push({ url: String(url), options })
-  return { ok: ownerStatus < 400, status: ownerStatus, json: async () => ownerCalls.length }
+// ── the FreeModel tab is the owner's own component ─────────────────────────
+// Vendored from the plugin's own client.js and patched in seven documented
+// places (tools/vendor-our-free-model.mjs). The two that matter here: its page
+// list and its nav row no longer name the removed page, and it registers no
+// settings section of its own — this plugin owns the one in the nav.
+const fork = fs.readFileSync(
+  new URL('../dsh-desktop-platform/vendor/our-free-model-client.js', import.meta.url),
+  'utf8'
+)
+if (/const TABS = \['free'/.test(fork)) throw new Error('the vendored page list still offers the removed page')
+if (fork.includes("t('nav.tab.free')")) throw new Error('the vendored nav still offers the removed page')
+if (fork.includes("ctx.slots.inject('settings.section'")) {
+  throw new Error('the vendored copy registers a settings section; it would show up in the nav beside ours')
 }
-
-const PAGES = {
-  upgrade: ['/api/our-free-model/update/status'],
-  eac: ['/api/our-free-model/eac/status'],
-  aggregate: ['/api/our-free-model/providers'],
-  saver: ['/api/our-free-model/token-saver', '/api/our-free-model/local-optimize'],
-  // The account channels are not the owner's routes at all: the pack answers
-  // over the Host's RPC door, so this page asks for nothing on /api.
-  accounts: [],
-  routing: ['/api/our-free-model/combos', '/api/our-free-model/summary'],
-  // The dashboard and the call log are two readings of the same ledger.
-  dashboard: ['/api/our-free-model/stats'],
-  logs: ['/api/our-free-model/stats'],
-  gateway: [
-    '/api/our-free-model/clients',
-    '/api/our-free-model/forward/key',
-    '/api/our-free-model/forward/lan/key',
-    '/api/our-free-model/forward/lan/addresses',
-    '/api/our-free-model/chan-gateway'
-  ]
+if (fork.includes("exports.renderSettings") === false) throw new Error('the vendored copy exports no component')
+for (const name of ['FreePage', 'ChannelsPage', 'AggregatePage', 'SaverPage', 'RoutingPage', 'LedgerPage', 'LogsPage', 'GatewayPage', 'EacPage']) {
+  if (fork.includes('function ' + name) === false) throw new Error('the vendored copy is missing ' + name)
 }
+console.log('vendor: ' + (fork.length / 1024).toFixed(0) + ' KB, removed page gone, nine pages kept')
 
-for (const [id, routes] of Object.entries(PAGES)) {
-  if (routes.length === 0) continue
-  rememberedTab = 'freemodel'
-  rememberedSection = id
-  registered.sections.length = 0
-  plugin.apply(ctx)
-  const mounted2 = registered.sections[registered.sections.length - 1]
-  const rendered2 = expand(mounted2.component(mounted2.entry.inject()))
-  // The owner page lives inside the one FreeModel tab, behind the inner nav.
-  if (findById(rendered2, 'dshPlatformPanel-freemodel') === null) throw new Error('the freemodel tab did not mount')
-  const own = findById(rendered2, `dshFmPanel-${id}`)
-  if (own === null) throw new Error(`${id} page did not mount behind the nav`)
-  // The page is still loading (effects are inert in this harness), which is the
-  // state that proves `t` reached it: the note is copy from our dictionary.
-  if (findByText(rendered2, 'settings.desktopPlatform/owner.loading') === null) {
-    throw new Error(`${id} did not render with the translator`)
-  }
-  ownerCalls.length = 0
-  flushEffects(() => expand(mounted2.component(mounted2.entry.inject())))
-  const asked = ownerCalls.map((call) => call.url)
-  for (const route of routes) {
-    if (!asked.includes(route)) throw new Error(`${id} never asked ${route} (asked ${asked.join()})`)
-  }
-  // The owner's fence only lets the renderer through with the page's own
-  // credentials; a bare fetch from anywhere else is a 401 and shows as absent.
-  if (ownerCalls.some((call) => call.options?.credentials !== 'same-origin')) {
-    throw new Error(`${id} fetched the owner without same-origin credentials`)
-  }
-  console.log(`${id}: reads ${routes.length} owner route(s), same-origin, degrades to a note while loading`)
-}
-
-// ── the new pages, rendered against real payloads ─────────────────────────
-// The harness above paints one pass with inert effects, which proves a page
-// asks the right routes but not that it draws the answer. This pass gives the
-// hooks a memory: a page that loads is re-rendered, and the values it actually
-// puts on screen are asserted.
-const STATS = {
-  requests: 12,
-  requestFailures: 1,
-  requestFailuresEstimated: true,
-  turns: 3,
-  failedTurns: 1,
-  recoveredTurns: 0,
-  days: [{ day: '2026-10-14', total: 160, models: [] }],
-  models: [{
-    model: 'deepseek-chat',
-    name: 'DeepSeek Chat',
-    input: 100, output: 50, reasoning: 10, cacheRead: 0,
-    calls: 4, failed: 1, turns: 3, failedTurns: 1, recoveredTurns: 0,
-    tps: 42, avgTtftMs: 350
-  }],
-  samples: [
-    { at: 1760000000000, model: 'deepseek-chat', ok: true, input: 12, output: 34, ttftMs: 210, tps: 44, decodeMs: 800, decodeTokens: 34, effort: '', origin: 'chat' },
-    { at: 1760000001000, model: 'deepseek-chat', ok: false, input: 1, output: 0, ttftMs: null, tps: null, decodeMs: 0, decodeTokens: 0, effort: '', origin: 'chat', truncated: true }
-  ],
-  savings: { bytesBefore: 1000, bytesAfter: 400, saved: 600, blocks: 3, calls: 9, promptCalls: 2, percent: 60 },
-  grand: { input: 100, output: 50, reasoning: 10, calls: 4, failed: 1, turns: 3, failedTurns: 1, recoveredTurns: 0 }
-}
-
-const AGGREGATE = {
-  registry: [{ id: 'agnes', name: 'Agnes AI', category: 'apikey', format: 'openai-chat', baseUrl: 'https://example.invalid/v1' }],
-  configured: { providers: { agnes: { enabled: true, baseUrl: 'https://example.invalid/v1', models: ['agnes-2.0-flash'], lastTest: { at: 1760000000000, ok: true, status: 200, message: '' } } } }
-}
-
-const EAC = { available: true, authorized: true, login: 'octocat', starred: true, required: false, configured: true, repo: 'acme/models', reason: null }
-
-const fetchCalls = []
-const ANSWERS = {
-  '/api/our-free-model/bench': { model: 'deepseek-chat', ok: true, totalMs: 1800, ttftMs: 420, outputTokens: 2, reasoningTokens: 0, tokensPerSecond: 38.5, sample: 'OK' },
-  '/api/our-free-model/stats': STATS,
-  '/api/our-free-model/providers': AGGREGATE,
-  '/api/our-free-model/eac/status': EAC,
-  // The roster the owner probes: one model it can reach, one it cannot, and
-  // the reason the second one is in the table at all.
-  '/api/our-free-model/summary': {
-    catalog: [
-      { id: 'deepseek-chat', name: 'DeepSeek Chat', availability: 'available', detail: '', ttftMs: 420, probedAt: 1760000000000 },
-      { id: 'broken-model', name: 'Broken Model', availability: 'unavailable', detail: 'upstream refused the credential', ttftMs: undefined, probedAt: 1760000000000 }
-    ]
-  }
-}
-
-const realFetch = globalThis.fetch
-const ownerFetchStub = async (url, options) => {
-  const path = String(url)
-  fetchCalls.push({ path, method: options?.method ?? 'GET' })
-  const body = ANSWERS[path]
-  if (body === undefined) return { ok: true, status: 200, json: async () => ({}) }
-  return { ok: true, status: 200, json: async () => body }
-}
-globalThis.fetch = ownerFetchStub
-
-/** A React whose hooks remember, so a load can be painted and then asserted. */
-function statefulHooks () {
-  const cells = {}
-  const queued = []
-  const cleanups = []
-  let cursor = 0
-  const paint = () => {
-    queued.length = 0
-    cursor = 0
-    return expand(mountNow())
-  }
-  const React$ = {
-    ...React,
-    useState: (init) => {
-      const at = cursor++
-      if (!(at in cells)) cells[at] = typeof init === 'function' ? init() : init
-      return [cells[at], (value) => {
-        cells[at] = typeof value === 'function' ? value(cells[at]) : value
-        queued.push('again')
-      }]
-    },
-    useEffect: (run) => { queued.push(() => {
-      const cleanup = run()
-      if (typeof cleanup === 'function') cleanups.push(cleanup)
-    }) }
-  }
-  return { React$, paint, queued, cleanups, reset: () => { for (const key of Object.keys(cells)) delete cells[key] } }
-}
-
-const hooked = statefulHooks()
-const keepUseState = React.useState
-const keepUseEffect = React.useEffect
-let mountNow = () => { throw new Error('mount not set') }
-React.useState = hooked.React$.useState
-React.useEffect = hooked.React$.useEffect
-
-/**
- * Paint a page repeatedly until its loads stop changing the tree, then hand
- * the last tree back.
- */
-async function settled (mount, passes = 8) {
-  mountNow = mount
-  let tree = null
-  for (let pass = 0; pass < passes; pass += 1) {
-    for (const cleanup of hooked.cleanups.splice(0)) cleanup()
-    tree = hooked.paint()
-    const work = hooked.queued.splice(0)
-    for (const item of work) {
-      if (typeof item === 'function') item()
-    }
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    if (hooked.queued.length === 0 && pass > 0) break
-  }
-  return tree
-}
-
-async function pageWith (id) {
-  hooked.reset()
-  rememberedTab = 'freemodel'
-  rememberedSection = id
-  registered.sections.length = 0
-  plugin.apply(ctx)
-  const mounted = registered.sections[registered.sections.length - 1]
-  return settled(() => mounted.component(mounted.entry.inject()))
-}
-
-const textsOf = (node, out = []) => {
-  walkTree(node, (candidate) => { for (const child of candidate.children) if (typeof child === 'string') out.push(child) })
-  return out
-}
-
-const dashboard = await pageWith('dashboard')
-const dashboardText = textsOf(dashboard)
-for (const needle of ['DeepSeek Chat', '2026-10-14', '75%', '350 ms', '600 B', '4']) {
-  if (!dashboardText.includes(needle)) throw new Error(`dashboard never shows ${needle}`)
-}
-if (findByText(dashboard, 'settings.desktopPlatform/dash.byModel') === null) throw new Error('dashboard has no model table')
-console.log('dashboard: model rows, day series, success rate and savings drawn from the owner ledger')
-
-const logs = await pageWith('logs')
-const logText = textsOf(logs)
-for (const needle of ['deepseek-chat', '210 ms', 'settings.desktopPlatform/log.ok']) {
-  if (!logText.includes(needle)) throw new Error(`call log never shows ${needle}`)
-}
-// The notes column joins its marks into one cell, so the cut-short call is
-// recognised by a substring rather than by an exact text node.
-if (!logText.some((text) => text.includes('log.truncated'))) {
-  throw new Error('the cut-short call is not marked in the notes column')
-}
-// The failed row is the one that matters: it has to be visible next to the ok one.
-if (logText.filter((text) => text === 'settings.desktopPlatform/log.ok').length !== 1) throw new Error('call log lost the successful row')
-if (logText.filter((text) => text === 'settings.desktopPlatform/log.failed').length !== 1) throw new Error('call log lost the failed row')
-console.log('call log: both rows drawn, the cut-short call marked')
-
-const aggregate = await pageWith('aggregate')
-const aggregateText = textsOf(aggregate)
-for (const needle of ['Agnes AI', 'settings.desktopPlatform/aggregate.on', 'settings.desktopPlatform/aggregate.verified']) {
-  if (!aggregateText.includes(needle)) throw new Error(`aggregate never shows ${needle}`)
-}
-console.log('aggregate: the configured provider is listed as on and verified')
-
-const eac = await pageWith('eac')
-const eacText = textsOf(eac)
-for (const needle of ['settings.desktopPlatform/eac.authorized', 'octocat', 'settings.desktopPlatform/eac.logout']) {
-  if (!eacText.includes(needle)) throw new Error(`eac never shows ${needle}`)
-}
-console.log('eac: signed-in state, the login and the sign-out control drawn')
-
-React.useState = keepUseState
-React.useEffect = keepUseEffect
-globalThis.fetch = realFetch
-
-// 404 means the owner plugin is not installed: the pages must say so rather
-// than surfacing a raw HTTP error.
+// Mounting it. The owner's page loads its own data, so with effects inert it
+// sits on its own loading note — which is itself the proof that this is their
+// component: their root class, their copy, their namespace.
 rememberedTab = 'freemodel'
-rememberedSection = 'gateway'
 registered.sections.length = 0
 plugin.apply(ctx)
-const absentMount = registered.sections[registered.sections.length - 1]
-ownerStatus = 404
-let capturedState = null
-const restoreState = React.useState
-React.useState = (init) => [typeof init === 'function' ? init() : init, (value) => { capturedState = typeof value === 'function' ? value(settledState) : value }]
-const settledState = { status: 'loading', data: null, error: '', absent: false }
-flushEffects(async () => { await expand(absentMount.component(absentMount.entry.inject())) })
-await new Promise((resolve) => setTimeout(resolve, 20))
-React.useState = restoreState
-ownerStatus = 200
-if (capturedState === null || capturedState.absent !== true) {
-  throw new Error(`a 404 from the owner must resolve to the absent state, got ${JSON.stringify(capturedState)}`)
-}
-console.log('owner absent (404): every page shows the install hint instead of an error')
+const vendorSection = registered.sections[registered.sections.length - 1]
+const vendorTree = expand(vendorSection.component(vendorSection.entry.inject()))
 
+const classes = []
+const seen = []
+walkTree(vendorTree, (candidate) => {
+  const className = String(candidate.props?.className ?? '')
+  if (className !== '') classes.push(className)
+  for (const child of candidate.children) if (typeof child === 'string') seen.push(child)
+})
+if (classes.includes('ofm_root') === false) {
+  throw new Error('the owner own root never rendered: ' + JSON.stringify(classes.slice(0, 12)))
+}
+if (seen.some((text) => text.startsWith('settings.ourFreeModel/')) === false) {
+  throw new Error('the owner page is not reading its own copy: ' + JSON.stringify(seen.slice(-6)))
+}
+if (seen.some((text) => text.startsWith('settings.desktopPlatform/loading'))) {
+  throw new Error('the owner page is still reading the platform copy')
+}
+console.log("freeModel tab: the owner's own component, its own copy, one section in the nav")
 
-/**
- * The account channels are the one page that does not read /api: they go
- * through the Host's RPC door into the vendored channel pack. This paints it
- * with a stub connection and asserts both the calls it makes and the cards it
- * draws — a page stuck on an empty grid because the bridge was wired wrong
- * looks exactly like a page that has no accounts.
- */
-const channelRows = [
-  { id: 'codearts-1c6d8fce', nickname: 'work account', enabled: true, refreshable: true, expiresAt: 1790000000000 },
-  { id: 'lobsterai-adf4e80e', nickname: 'personal', enabled: false, refreshable: false }
-]
-const channelStatuses = {
-  codearts: { models: { total: 4, disabled: 1 }, accounts: { total: 2, enabled: 1 }, closed: false },
-  buddy: { models: { total: 6, disabled: 0 }, accounts: { total: 0, enabled: 0 }, closed: false },
-  lobsterai: { models: { total: 2, disabled: 2 }, accounts: { total: 1, enabled: 0 }, closed: true },
-  workbuddy: { models: { total: 3, disabled: 0 }, accounts: { total: 1, enabled: 1 }, closed: false }
+// And the host's loader must be back: the shim is a swap, not a replacement.
+if (typeof window.__ModuleLoader__?.load !== 'function') {
+  throw new Error('the host ModuleLoader was not restored after the shim')
 }
+console.log("loader: the host's ModuleLoader is intact after the shim")
 
-const rpcCalls = []
-let loginPolls = 0
-// The ledger the pack keeps for the channel accounts, in the shape the pack
-// actually builds it: channel → provider → account → model, with the averages
-// already divided by readTokenLedger's finalizeAverages.
-const ledgerRow = {
-  requests: 12,
-  reportedRequests: 11,
-  inputTokens: 900,
-  outputTokens: 300,
-  cacheReadTokens: 1200,
-  cacheWriteTokens: 0,
-  reasoningTokens: 40,
-  errors: 1,
-  avgTtftMs: 420,
-  avgTps: 38.5
-}
-const packSnapshot = {
-  channels: [{
-    channel: 'lobsterai',
-    providers: [{
-      provider: 'lobsterai',
-      accounts: [{
-        accountId: 'lobsterai-adf4e80e',
-        models: [{ model: 'deepseek-flash', ...ledgerRow }],
-        totals: ledgerRow
-      }],
-      totals: ledgerRow
-    }],
-    totals: ledgerRow
-  }],
-  totals: ledgerRow,
-  entries: [
-    { at: 1760000000000, channel: 'lobsterai', provider: 'lobsterai', accountId: 'lobsterai-adf4e80e', model: 'deepseek-flash', usageReported: true, inputTokens: 120, outputTokens: 40, ttftMs: 310, tps: 41.2 },
-    { at: 1760000001000, channel: 'lobsterai', provider: 'lobsterai', accountId: 'lobsterai-adf4e80e', model: 'deepseek-flash', usageReported: false, error: 'upstream 5xx', inputTokens: 0, outputTokens: 0 }
-  ]
-}
-const packHistory = [{ day: '2026-10-15', channels: packSnapshot.channels, totals: ledgerRow }]
-
-const packConnection = {
-  rpc: {
-    call: async (_space, endpoint, body) => {
-      rpcCalls.push({ endpoint, method: body.method, payload: body.payload })
-      if (body.method === 'provider.status') return { ok: true, value: { statuses: channelStatuses } }
-      if (body.method === 'account.list') {
-        return { ok: true, value: { accounts: body.payload.provider === 'codearts' ? channelRows : [] } }
-      }
-      if (body.method === 'model.list') {
-        return { ok: true, value: { models: [{ id: 'deepseek-v3', name: 'DeepSeek V3', disabled: false, isFree: true }] } }
-      }
-      if (body.method === 'account.create') {
-        // The pack's real answer: a placeholder account and a sign-in URL. The
-        // credential only lands later, which is what login.poll watches.
-        return { ok: true, value: { accountId: 'codearts-pending', loginUrl: 'https://example.invalid/login' } }
-      }
-      if (body.method === 'login.poll') {
-        loginPolls += 1
-        return loginPolls === 1
-          ? { ok: true, value: { done: false } }
-          : { ok: true, value: { done: true, success: true, login: 'work@example.invalid' } }
-      }
-      if (body.method === 'account.test') return { ok: true, value: { ok: true, ms: 128 } }
-      if (body.method === 'usage.tokenLedger') return { ok: true, value: { snapshot: packSnapshot } }
-      if (body.method === 'usage.tokenLedgerHistory') return { ok: true, value: { history: packHistory, totals: ledgerRow } }
-      if (body.method === 'usage.autoCheckin') {
-        return body.payload?.enabled === undefined
-          ? { ok: true, value: { autoCheckin: { enabled: true, lastAt: 1760000000000, lastResult: 'claimed' } } }
-          : { ok: true, value: { autoCheckin: { enabled: body.payload.enabled, lastAt: 1760000000000, lastResult: 'claimed' } } }
-      }
-      if (body.method === 'credits.balances') {
-        return {
-          ok: true,
-          value: {
-            accounts: [
-              { accountId: 'codearts-1c6d8fce', nickname: 'work account', balance: 120 },
-              { accountId: 'lobsterai-adf4e80e', nickname: 'personal', balance: null, error: '凭据未配置' }
-            ]
-          }
-        }
-      }
-      if (body.method === 'credits.claimAll') {
-        return { ok: true, value: { results: [], summary: { claimed: 1, 'already-claimed': 1, inactive: 0, failed: 0 } } }
-      }
-      return { ok: true, value: {} }
-    }
-  }
-}
-
-// Mount the real shell with a context that answers `get`, exactly the shape the
-// plugin's own ctx has for an optional service.
-const mountFreeModel = (context) => {
-  // Each mount starts from blank hook cells: a leftover from the previous one
-  // is exactly how a page ends up rendering a null Set.
-  hooked.reset()
-  rememberedTab = 'freemodel'
-  rememberedSection = 'accounts'
-  registered.sections.length = 0
-  plugin.apply(ctx)
-  const section = registered.sections[registered.sections.length - 1]
-  return () => section.component({
-    t: (key) => `settings.desktopPlatform/${key}`,
-    scope: {},
-    host: { session: null },
-    ctx: context
-  })
-}
-
-const withBridge = { get: (name) => (name === 'connection' ? packConnection : undefined) }
-rpcCalls.length = 0
-// The block above restored the inert hooks when it finished; this page needs
-// them back to have a memory, or every effect silently never runs.
-React.useState = hooked.React$.useState
-React.useEffect = hooked.React$.useEffect
-
-const packTree = await settled(mountFreeModel(withBridge))
-
-if (rpcCalls[0].endpoint !== 'channel-pack') {
-  throw new Error(`the accounts page dialled ${rpcCalls[0].endpoint}, expected the pack's own endpoint`)
-}
-if (rpcCalls[0].method !== 'provider.status') {
-  throw new Error(`the accounts page asked for ${rpcCalls[0].method} first`)
-}
-const asked = rpcCalls[0].payload.providers
-if (!Array.isArray(asked) || asked.length !== 13 || !asked.includes('codearts')) {
-  throw new Error(`the accounts page asked for the wrong providers: ${JSON.stringify(asked)}`)
-}
-// The pack's own daily check-in is a switch above the cards, and it is read
-// with the same door — a page that only lists accounts would never show it.
-if (!rpcCalls.some((call) => call.method === 'usage.autoCheckin')) {
-  throw new Error('the accounts page never asked the pack about auto check-in')
-}
-if (findByText(packTree, 'settings.desktopPlatform/accounts.autoCheckinHint') === null) {
-  throw new Error('the auto check-in switch is not on the page')
-}
-const accountText = textsOf(packTree)
-for (const needle of ['CodeArts', 'LobsterAI', 'settings.desktopPlatform/accounts.state.on', 'settings.desktopPlatform/accounts.state.closed']) {
-  if (!accountText.includes(needle)) throw new Error(`the accounts page never shows ${needle}`)
-}
-// The count pills are built as one string, so the label is a substring, not a
-// text node of its own.
-if (!accountText.some((text) => text.includes('accounts.accounts') && text.includes('1/2'))) {
-  throw new Error(`the accounts page shows no account counts: ${JSON.stringify(accountText.slice(-6))}`)
-}
-const opened = []
-globalThis.window.open = (url) => { opened.push(url); return null }
-
-const mountAccounts = mountFreeModel(withBridge)
-const codeartsCard = findCard(packTree, 'CodeArts')
-if (codeartsCard === null) throw new Error('the CodeArts card is not on the page')
-const addButton = findButton(codeartsCard, 'settings.desktopPlatform/accounts.add')
-if (addButton === null) throw new Error('no add-account button on the card')
-rpcCalls.length = 0
-await addButton.props.onClick()
-// The call is made on the first tick; the window opens once the answer comes
-// back, which is a microtask later.
-await new Promise((resolve) => setTimeout(resolve, 0))
-await new Promise((resolve) => setTimeout(resolve, 0))
-if (!rpcCalls.some((call) => call.method === 'account.create')) {
-  throw new Error('the add-account button did not start a login')
-}
-if (opened.length === 0 || !opened[0].includes('example.invalid')) {
-  throw new Error('the sign-in page was never opened: ' + JSON.stringify(opened))
-}
-
-// The accounts fold has to be open before the row buttons exist. The harness
-// does not re-render on a state change by itself, so paint again.
-const foldButton = findButton(codeartsCard, 'settings.desktopPlatform/accounts.foldAccounts')
-if (foldButton === null) throw new Error('no accounts fold on the card')
-rpcCalls.length = 0
-await foldButton.props.onClick()
-await settled(mountAccounts)
-if (!rpcCalls.some((call) => call.method === 'account.list')) {
-  throw new Error('opening the accounts fold did not read the accounts')
-}
-const openTree = await settled(mountAccounts)
-const testButton = findButton(openTree, 'settings.desktopPlatform/accounts.test')
-if (testButton === null) throw new Error('no connection test on any account row')
-rpcCalls.length = 0
-await testButton.props.onClick()
-await new Promise((resolve) => setTimeout(resolve, 0))
-if (!rpcCalls.some((call) => call.method === 'account.test')) {
-  throw new Error('the test button did not test the account')
-}
-console.log('accounts: sign-in opens the browser, the connection test is reachable')
-
-console.log('accounts: 13 channels dialled as one provider.status, cards drawn with their real state')
-
-// No connection service at all: the page must say so instead of rendering an
-// empty grid that reads as "you have no accounts".
-const blindTree = await settled(mountFreeModel({ get: () => undefined }))
-if (findByText(blindTree, 'settings.desktopPlatform/accounts.noBridge') === null) {
-  throw new Error('without a connection service the page must explain itself')
-}
-console.log('accounts: no connection service → the page explains itself')
-
-
-
-
-// The dashboard reads a second ledger — the pack's, not the owner's — and the
-// call log can switch to it. Both are invisible without the bridge, so they
-// are asserted here rather than left to the eye.
-rememberedTab = 'freemodel'
-rememberedSection = 'dashboard'
-registered.sections.length = 0
-plugin.apply(ctx)
-const dashMount = registered.sections[registered.sections.length - 1]
-hooked.reset()
-const dashTree = await settled(() => dashMount.component({
-  t: (key) => `settings.desktopPlatform/${key}`,
-  scope: {},
-  host: { session: null },
-  ctx: withBridge
-}))
-if (!rpcCalls.some((call) => call.method === 'usage.tokenLedgerHistory')) {
-  throw new Error('the pack ledger was never read')
-}
-const dashText = textsOf(dashTree)
-if (!dashText.includes('lobsterai')) {
-  throw new Error(`the channel ledger is not on the dashboard: ${JSON.stringify(dashText.slice(-8))}`)
-}
-if (!dashText.some((text) => text.includes('900') || text.includes('1,200'))) {
-  throw new Error('the channel ledger shows no token figures')
-}
-console.log('dashboard: the pack\'s channel ledger is rendered beside the owner\'s own')
-
-rememberedSection = 'logs'
-const logMount2 = registered.sections[registered.sections.length - 1]
-hooked.reset()
-const logTree2 = await settled(() => logMount2.component({
-  t: (key) => `settings.desktopPlatform/${key}`,
-  scope: {},
-  host: { session: null },
-  ctx: withBridge
-}))
-if (findByText(logTree2, 'settings.desktopPlatform/log.laneOwner') === null) {
-  throw new Error('the call log has no lane switch')
-}
-if (findByText(logTree2, 'settings.desktopPlatform/log.lanePack') === null) {
-  throw new Error('the call log offers no channel lane')
-}
-console.log('call log: both lanes offered, the channel one read from the pack')
-
-
-// The availability table and the bench answer "can this model actually be
-// called, and how fast". The bench is a real generation, so it goes through
-// the owner's own route rather than the pack.
-rememberedTab = 'freemodel'
-rememberedSection = 'routing'
-registered.sections.length = 0
-plugin.apply(ctx)
-const routeMount = registered.sections[registered.sections.length - 1]
-hooked.reset()
-globalThis.fetch = ownerFetchStub
-const routeTree = await settled(() => routeMount.component({
-  t: (key) => `settings.desktopPlatform/${key}`,
-  scope: {},
-  host: { session: null },
-  ctx: withBridge
-}))
-if (findByText(routeTree, 'settings.desktopPlatform/check.title') === null) {
-  throw new Error('the routing page has no model availability table')
-}
-const benchButton = findButton(routeTree, 'settings.desktopPlatform/check.bench')
-if (benchButton === null) throw new Error('no bench button on any model')
-fetchCalls.length = 0
-await benchButton.props.onClick()
-await new Promise((resolve) => setTimeout(resolve, 0))
-await new Promise((resolve) => setTimeout(resolve, 0))
-if (!fetchCalls.some((call) => call.method === 'POST' && call.path.endsWith('/bench'))) {
-  throw new Error('the bench button did not run a generation: ' + JSON.stringify(fetchCalls))
-}
-console.log('routing: model availability table present, bench really posts to /bench')
-
-// The inner nav is the owner's affordance, ours: eight entries, and the
-// remembered page is the one that is actually on screen.
-rememberedTab = 'freemodel'
-rememberedSection = 'dashboard'
-registered.sections.length = 0
-plugin.apply(ctx)
-const navMount = registered.sections[registered.sections.length - 1]
-const navTree = expand(navMount.component(navMount.entry.inject()))
-// Scope the search to the FreeModel panel: the platform's own tab strip is
-// a tablist too, and it comes first in the tree.
-const navPanel = findById(navTree, 'dshPlatformPanel-freemodel')
-const navList = navPanel === null ? null : findByRole(navPanel, 'tablist')
-if (navList === null) throw new Error('the FreeModel section has no nav')
-const navIds = navList.children.map((child) => child.props.id)
-const navWanted = ['upgrade', 'eac', 'accounts', 'aggregate', 'saver', 'routing', 'dashboard', 'logs', 'gateway']
-if (navIds.join() !== navWanted.map((id) => `dshFmTab-${id}`).join()) {
-  throw new Error(`nav ids: ${navIds}`)
-}
-if (findById(navTree, 'dshFmPanel-dashboard') === null) throw new Error('the remembered page did not mount')
-// A page the user never opened must not be built: an owner page reads the
-// network on mount, and eight of them at once is eight round trips.
-if (findById(navTree, 'dshFmPanel-logs') !== null) throw new Error('an unvisited nav page was mounted anyway')
-console.log(`freemodel nav: ${navIds.length} entries, remembered page dashboard, unvisited pages not built`)
-
-// The mount is history: nothing may bring another plugin's settings section in.
-if (/ForeignPage|ofm_navbrand|entry\.options\.locale/.test(source)) {
-  throw new Error('the other plugin\'s page is mounted again, or the mount\'s entry-reading idiom came back')
-}
 console.log('foreign mount: gone from the source')
 
 /**
@@ -817,33 +346,11 @@ function findByText (node, needle) {
   })
   return hit
 }
-function findCard (node, name) {
-  let hit = null
-  walkTree(node, (candidate) => {
-    if (hit !== null) return
-    const className = String(candidate.props?.className ?? '')
-    if (className.split(' ').includes('dshFmChan') === false) return
-    // The name sits inside the card's header, not directly on the card.
-    if (textsOf(candidate).includes(name)) hit = candidate
-  })
-  return hit
-}
 /**
  * A button whose label starts with a copy key. Substring, not equality: the
  * fold buttons read "账号 (2)" — the key plus a count — and the key is what
  * the test means.
  */
-function findButton (node, label) {
-  let hit = null
-  walkTree(node, (candidate) => {
-    if (hit !== null) return
-    if (typeof candidate.props?.onClick !== 'function') return
-    for (const child of candidate.children) {
-      if (typeof child === 'string' && child.startsWith(label)) { hit = candidate; return }
-    }
-  })
-  return hit
-}
 function findByRole (node, role) {
   let hit = null
   walkTree(node, (candidate) => { if (hit === null && candidate.props.role === role) hit = candidate })
@@ -881,5 +388,4 @@ function walkTree (node, visit) {
   walkTree(node.children, visit)
 }
 
-for (const cleanup of hooked.cleanups.splice(0)) cleanup()
 console.log('OK')

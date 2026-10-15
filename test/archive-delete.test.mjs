@@ -53,7 +53,18 @@ globalThis.window = {
 }
 globalThis.document = {
   head: { appendChild: () => {} },
-  createElement: () => ({ id: '', textContent: '' }),
+  // Enough of an element for a plugin to style: the vendored FreeModel page
+  // sets a data-plugin attribute and a text content on its stylesheet.
+  createElement: () => {
+    const attributes = new Map()
+    return {
+      id: '',
+      textContent: '',
+      setAttribute: (name, value) => { attributes.set(name, value) },
+      getAttribute: (name) => attributes.get(name) ?? null,
+      remove: () => {}
+    }
+  },
   getElementById: () => null
 }
 

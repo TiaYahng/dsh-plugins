@@ -14,105 +14,59 @@ FreeModel 的 8 个页面不占外层页签：外层只有 1 个 `freemodel` 页
 
 前三页用本插件自己的 `/dsh-desktop/*` 路由；后 8 页是 `dsh-our-free-model` 的前端。
 
-## FreeModel：为什么是重做而不是挂载
+## FreeModel：内嵌原版，而不是重做
 
-先试过把那个插件已注册的设置页整块挂进来（`ctx.slots.entries('settings.section').find(...)`
-→ `React.createElement(entry.component, { close, t })`），一行代码没抄。技术上是通的，但
-**页签条是它组件内部的 state，从外部无法隐藏其中某一项**：挂载 = 一次接受它全部 9 个页签，
-其中第一页正是用户不要的「免费模型」。要控制页签集合只能自建前端。
+这条路走过两轮。第一轮是**挂载**：把对方已注册的设置页取出来渲染，一行代码没抄。
+技术上通，但它那 9 个页签会整排显示，页签条是它组件内部的 state，从外部无法隐藏其中
+某一项——用户要的「免费模型」删不掉。第二轮是**照着它的接口重写一套**：功能能补齐，
+但结构、交互、文案始终是另一套东西，看着像另一个应用。
 
-顺带记下两个坑（当时各踩一次）：
+现在是第三轮：**把它的 `client.js` 内嵌进来**，只改七处，其余原封不动。
 
-- **手动挂载设置页必须自带 `t`。** 它的页面第一行就是 `props.t(x)`，缺了在渲染期抛错、页签白屏。
-- **命名空间在 `entry.locale`**（与 `component`/`inject` 同级），不在 `entry.options`——
-  `SlotCore.register` 只把 `key/id/order/label/priority` 收进 `options`。读错会静默走回退分支，
-  界面全是原始 key（当时截图里一片 `nav.tab.free`）。
+| 改动 | 为什么 |
+| --- | --- |
+| bundle id → `dsh-our-free-model-vendored` | 这份副本只经本插件的加载壳求值，宿主看不到；万一看到了，两个 bundle 抢一个 id |
+| 页签记忆列表去掉 `'free'` | 记住的那一项也可能是被删掉的那页 |
+| 导航去掉 `t('nav.tab.free')` 那一行 | 页签条上不该有它 |
+| 默认分支不再渲染 FreePage | 兜底分支改成 EacPage，那页的组件永远挂不上 |
+| 两处 `ctx.slots.inject(...)` 注册去掉 | 注册了就会在设置侧栏多出第二个页面，和「综合平台」并排 |
+| 公告 EventSource 去掉 | 它自己的插件已经为整个应用面开了一条；再来一条就是同一份 feed 双份 toast 和系统通知 |
+| 导出 `exports.renderSettings` | 页面本身交出来，由本插件在自己的 section 里挂载 |
 
-## 模型接入：走宿主 RPC，不是 /api
+`tools/vendor-our-free-model.mjs` 重新生成 `dsh-desktop-platform/vendor/our-free-model-client.js`
+并把它拼进 `client.js` 的 VENDOR 标记之间。**每处改动都按行内容定位，不按缩进定位**：
+源码是别人的，重排一次缩进不该让这个脚本变成空格游戏。原版更新后重跑即可。
 
-账号渠道的数据**不在** `dsh-our-free-model` 那里：它把 channel pack 吸收进了自己的
-`vendor/channel-pack/pack.js`，再通过宿主的 RPC 路由 `/api` → `channel-pack` 调用。
-pack 有 183 个方法，我们只用这几个：
+### 加载壳
 
-| 方法 | 载荷 | 返回 |
-| --- | --- | --- |
-| `provider.status` | `{ providers: string[] }` | `{ statuses: { [p]: { models: {total,disabled}, accounts: {total,enabled}, closed } } }` |
-| `account.list` | `{ provider }` | `{ accounts: [{ id, nickname, enabled, refreshable, expiresAt, createdAt }] }` |
-| `account.create` | `{ provider }` | `{ authUrl }`（两段式登录，落地要等对方重定向） |
-| `account.update` | `{ accountId, patch: { enabled } }` | — |
-| `account.delete` / `account.refresh` | `{ accountId }` | — |
-| `model.list` | `{ provider }` | `{ models: [{ id, name, disabled, dead, isFree? }] }` |
-| `model.setDisabled` | `{ provider, modelId, disabled }` | — |
-| `provider.setEnabled` | `{ provider, enabled }` | `{ provider, enabled, models, accounts }` |
-| `credits.balances` | `{ provider, force? }` | `{ accounts: [{ accountId, nickname, balance, error? }] }`，`balance` 是数字或 `{ total, expiredTotal?, packages[] }` |
-| `credits.claimAll` | `{ provider }` | `{ results: [{ accountId, outcome: { kind } }], summary }`，`kind` ∈ claimed / already-claimed / inactive / failed |
-| `usage.autoCheckin` | 无载荷读，`{ enabled }` 写 | `{ autoCheckin: { enabled, lastAt, lastResult } }` |
-| `usage.tokenLedger` | `{ limit }` | `{ snapshot: { channels: [{ channel, providers: [{ provider, accounts: [{ accountId, models: [{ model, … }], totals }], totals }], totals, entries } } }` |
-| `usage.tokenLedgerHistory` | `{ sinceDays }` | `{ history: [{ day, channels, totals }], totals }`（落盘 90 天，进程内 500 条） |
+它的 bundle 是手写的 ModuleLoader bundle，会调 `window.__ModuleLoader__.load`——而宿主自己的
+加载器就在同一个对象上。放它过去就会注册出第二个同名 bundle（两个插件、一个 id、两个设置页）。
+所以求值期间把加载器换成捕获用的假对象，求值完（同步）立刻换回来，之后断言宿主加载器仍在。
 
-账本行的字段是 `requests / reportedRequests / inputTokens / outputTokens / cacheReadTokens /
-cacheWriteTokens / reasoningTokens / errors`，外加 `finalizeAverages` 算好的 `avgTtftMs` 与
-`avgTps`（样本为 0 时**不写这两个键**，所以读的时候要判空而不是当 0）。
+### 两个必须自己绑的东西
 
-**两本账不能混**：`GET /api/our-free-model/stats` 只数插件自己的免费线路；13 个渠道账号的
-token 在 pack 的账本里，两者互不重叠。看板因此有两段，运行日志有一个「调用来源」切换。
+- **翻译器**：宿主平时按 section 注册的 `locale` 绑 `t`。我们不注册它的 section，所以要自己
+  `ctx.locale.bind('settings.ourFreeModel')`——而且要在它 `apply` 注册完词典**之后**绑。
+  绑错的话它的页面会拿本插件的词典去取自己的 key，界面上出现回显或错词。
+- **两份样式表**：它那 426 KB 里自带 `data-plugin="dsh-our-free-model"` 的样式，由它的
+  `apply` 注入；本插件另有自己的一份。自检要求两份都在。
 
-**桥只能读 `ctx.get('connection')`，不能读 `ctx.connection`。** 宿主只交出声明过的服务，
-未声明的属性访问会在渲染进程抛错并带走整个 client bundle（见上面那条 inject 规矩）；
-`ctx.get()` 是机会性查找，问不到就返回 `undefined`，这才是可选服务该用的读法。
-拿不到 connection 时页面显示一句说明，而不是渲染一张空卡片——空卡片读起来就是「你没有账号」。
+### 它的 CSS 有两个宿主没定义的 token
 
-13 个渠道的状态一次 `provider.status` 问完；账号和模型**折叠起来才加载**，所以打开这一页
-只发一轮请求。`provider.setEnabled(false)` 的语义是「关掉它全部模型 + 停用全部账号」，
-pack 源码里写明顺序不可颠倒，所以这一页不自己拼这个操作，只发一次调用。
-
-## FreeModel 的玻璃质感
-
-照 `dsh-our-free-model` 的视觉重做：fixed 的 aurora 背景（三团 blur 70px 的色斑 + 漂移动画）、
-sticky 的毛玻璃导航条、胶囊页签、页面切换的淡入上移。色值全部用 `--dsw-alias-*`
-（连原版硬编码的 `#3ECFA0`、`rgba(62,207,160,…)` 都换成 `color-mix(in srgb, var(--dsw-alias-…) …)`），
-高光和投影用 `color-mix(in srgb, var(--dsw-alias-label-primary) N%, transparent)` 代替
-`rgb(255 255 255 / N%)`。aurora 必须在 root 里 `isolation:isolate` + `z-index:-1`：
-外壳是纯色背景时 `backdrop-filter` 没有东西可采样，玻璃面会退化成半透明方块。
+`--dsw-alias-state-warning-primary` 和 `--dsw-alias-label-on-accent`：宿主一共 119 个
+`--dsw-alias-*`，没有这两个。在 `color-mix()` 里这会让整条声明作废，所以原版那两处颜色
+**今天就是不显示的**。自检只审我们自己的样式表，遇到它会**报告而不报错**——这是它的 CSS，
+要改得由它改；我们这份副本照原样带着。
 
 ## FreeModel：围栏与降级
 
-它的路由有信任围栏：外部 curl 一律 401，认证 cookie 只在渲染进程里。所以：
+内嵌的那份代码自己面对这些约束，结论不用重写，只记两条我们改到过的：
 
-```js
-fetch('/api/our-free-model' + path, { credentials: 'same-origin', cache: 'no-store' })
-```
-
-`404` / `401` 一律映射成「owner 不在」（插件没装或没加载）→ 显示安装提示，不抛 HTTP 错误。
-Key 默认打码，点「显示」才明文；轮换走它自己的 `/forward/rotate`、`/forward/lan/rotate`。
-长任务单独给超时：`/update/check` 60 s、`/update/apply` 600 s（`AbortSignal.timeout`）。
-
-### 每页读哪些路由
-
-| 页签 | 读 | 写 |
-| --- | --- | --- |
-| 插件升级 | `/update/status` | `/update/check`、`/update/apply`、`/reload` |
-| EAC 模型 | `/eac/status` | `/eac/login/start`、`/eac/login/poll?link=`、`/eac/login/cancel?link=`、`/eac/logout` |
-| 聚合渠道 | `/providers` | `/providers`、`/providers/test`、`/providers/discover`、`/providers/remove` |
-| 省 Token | `/token-saver`、`/local-optimize` | 同名 POST |
-| 路由 | `/combos`、`/summary` | `/combos` |
-| 数据看板 | `/stats` | — |
-| 运行日志 | `/stats` | — |
-| 网关设置 | `/clients`、`/forward/key`、`/forward/lan/key`、`/forward/lan/addresses`、`/chan-gateway` | `/forward/rotate`、`/forward/lan/rotate` |
-
-看板和日志是同一份账本 `/stats` 的两种读法：
-
-```js
-{ requests, requestFailures, requestFailuresEstimated, turns, failedTurns, recoveredTurns,
-  days:   [{ day, total, models: [...] }],
-  models: [{ model, name, input, output, reasoning, cacheRead, calls, failed, turns, tps, avgTtftMs }],
-  samples:[{ at, model, ok, input, output, ttftMs, tps, decodeMs, decodeTokens, effort, origin, truncated?, noUsage? }],
-  savings:{ bytesBefore, bytesAfter, saved, blocks, calls, promptCalls, percent },
-  grand:  { input, output, reasoning, calls, failed, turns } }
-```
-
-`samples` 是最近 200 次调用的环形缓冲，里面标了 `truncated` / `noUsage` 的行就是「那一轮怎么没了」
-要查的行。`/stats` 的 `requestFailuresEstimated === true` 时看板会说明失败数是推算的。
+- **它的路由有信任围栏**：外部 curl 一律 401，认证 cookie 只在渲染进程里，所以它每个请求都
+  带 `credentials: 'same-origin'`。这也是为什么这份副本只能跑在宿主页面里。
+- **账号与积分不在插件的 `/api` 下**：它们在被吸收的 channel pack 里（`vendor/channel-pack/`
+  里那 426 KB 的一部分，183 个 RPC 方法），经宿主 `/api` → `channel-pack` 调用。
+  可选服务只能读 `ctx.get('connection')`，直接读 `ctx.connection` 会因为未声明而抛错。
 
 ### 聚合渠道的 Key 语义
 

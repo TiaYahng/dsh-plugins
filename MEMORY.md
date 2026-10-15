@@ -1,5 +1,8 @@
 # 长期记忆
 
+- 2026-10-16 FreeModel 的页面**不再自己写**：原版 `client.js` 内嵌进本插件，`tools/vendor-our-free-model.mjs` 重新生成并拼进 client.js，只改七处（bundle id / 页签记忆 / 导航行 / 默认分支 / 两处 slot 注册 / 公告 EventSource / 导出组件）。走过的弯路：挂载（它的页签条删不掉某一页）→ 照接口重写（差距大，用户不接受）。
+- 2026-10-16 内嵌它的两件事必须自己做：翻译器要 `ctx.locale.bind('settings.ourFreeModel')` 且在它 `apply` 注册词典**之后**绑（否则它用自己的 key 去查本插件的词典）；`window.__ModuleLoader__` 要在求值那一下换成捕获用的假对象，否则会注册出第二个同名 bundle。
+- 2026-10-16 原版自己的 CSS 用了两个宿主没定义的 token（`--dsw-alias-state-warning-primary`、`--dsw-alias-label-on-accent`），在 color-mix() 里整条声明作废，那两处颜色今天就是不显示的；自检只审我们自己的样式表，遇到它报告不报错。
 - 2026-10-15 客户端 `exports.inject` 是**服务声明**，不是给组件传参的清单：宿主只在声明过的服务上放行，访问未声明的 `ctx.locale` 会在渲染进程抛 `cannot get property "locale" without inject`，整个 client bundle 加载失败、市场弹出「恢复/卸载此插件」。清空过它一次，代价是应用打不开。
 - 2026-10-14 本仓库从 2 插件 3 页面合并为 1 插件 1 页面（`dsh-desktop-platform`，导航名「综合平台」），3 个页签：用量统计 / 归档历史 / 记忆系统。
 - 2026-10-14 设置导航顺序：宿主内置占 -10..20（账号/通用/模型/插件/Agent 预设），第三方 IM机器人 占 21，自制页用 `order: 900` 钉在最后。
@@ -16,15 +19,10 @@
 - 2026-10-15 dsh-our-free-model 的 `/api/our-free-model/*` 有信任围栏，外部请求一律 401，页面只能在渲染进程里用同源凭据访问；它装的版本与 GitHub main 一致（2.1.0）。
 - 2026-10-15 跨插件挂载别人注册的设置页时，必须连 `close` 和 `t`（`ctx.locale.bind(entry.options.locale)`）一起给；缺 `t` 会在渲染期抛错、页签白屏。
 - 2026-10-15 slot 记录的命名空间在 `entry.locale`（与 component/inject 同级），`entry.options` 里只有 key/id/order/label/priority；读错会静默退化成回显 key。
-- 2026-10-15 挂载别人的设置页做不到「只显示其中几页」：页签条是对方组件内部的 state，外部无法隐藏单个页签，用户因此要求删掉「免费模型」那一页。结论：这 4 页改为自建前端，只读它的 `/api/our-free-model/*`。
-- 2026-10-15 channel pack 不是独立安装的插件，它躺在 `dsh-our-free-model\vendor\channel-pack\pack.js`（183 个 RPC 方法），经宿主 `/api` → `channel-pack` 调用；账号池/模型黑名单/每日签到都在它那边，插件只是转发。
-- 2026-10-15 调 pack 只能 `ctx.get('connection')` 再 `rpc.call('/api','channel-pack',{method,payload},signal)`；`ctx.connection` 直接属性访问属于未声明服务，会抛错并让 client bundle 整个加载失败。
 - 2026-10-15 宿主一共 119 个 `--dsw-alias-*`，state 色相只有 `business/idle/success/warn/error` 五个；写 `info`/`brand`/`warning`/`danger` 不会报错而是整条声明作废（渐变/文字消失）。快照在 `test/dsw-tokens.json`，自检逐个核对。
-- 2026-10-15 综合平台 4 个外层页签：用量统计 / 归档历史 / 记忆系统 / FreeModel；FreeModel 的 9 个页面在页内导航里（用户嫌 11 个外层页签太多、太不像原版）。
+- 2026-10-15 综合平台 4 个外层页签：用量统计 / 归档历史 / 记忆系统 / FreeModel（用户嫌 11 个外层页签太多、太不像原版；FreeModel 内页已于 2026-10-16 换成原版内嵌）。
 - 2026-10-15 FreeModel 的看板与运行日志不需要 channel pack：`GET /api/our-free-model/stats` 一个接口就够（`grand`/`models`/`days`/`savings` + 最近 200 条 `samples`，含 `truncated`/`noUsage` 标记）。
-- 2026-10-15 FreeModel 只有「模型接入」和「渠道用量」不读 `/api`：13 个渠道的账号/积分/模型黑名单、以及 90 天落盘账本，都在 channel pack 的 RPC 里（`provider.status`/`account.list`/`credits.balances`/`credits.claimAll`/`usage.autoCheckin`/`usage.tokenLedger[History]`）。
 - 2026-10-16 账本有两个，不能混：`/api/our-free-model/stats` 只数插件自己的免费线路；渠道账号的 token 在 pack 的 `usage.tokenLedger`（进程内 500 条）和 `usage.tokenLedgerHistory`（落盘 90 天），形状是 channel→provider→account→model。
-- 2026-10-16 pack 的账本行在样本为 0 时**不写** `avgTtftMs`/`avgTps` 两个键（`finalizeAverages` 用条件展开），读的时候必须判空，不能当 0。
 - 2026-10-15 README 只留用途（页签表 + 安装一行），实现与踩坑移到 `docs/ENGINEERING.md`。
 - 2026-10-15 仓库已推到 `https://github.com/TiaYahng/dsh-plugins`（公开，主分支 `main`，本地 master 已改名）。本机没有 `gh` CLI，但 Windows 凭据管理器里存着 github.com 的 40 位 token：`git credential fill` 能取到，可直接用它调 GitHub API（建仓库、设描述）。
 - 2026-10-15 全局 git 配置里第二条 `credential.helper`（`!".../PortableGit/.../git-credential-manager.exe"`）指向不存在的文件，每次 push 会报一次 `store: ... No such file or directory`——是噪音，推送本身照样成功。
@@ -34,5 +32,8 @@
 - 2026-10-16 宿主 `tools.register` 的 JSON Schema 只支持子集 `type/oneOf/properties/required/additionalProperties/items/enum/const` + 注解 `description/title/default/examples`，多写一个 key 就 `unsupported JSON schema: ... is not a supported keyword`；`additionalProperties` 必须是 boolean，`required` 的每一项必须出现在 `properties` 里，保留名 `run_code`。
 - 2026-10-16 宿主 `execute()` 返回的是**裸值**：宿主自己做 `validateJsonSchemaValue(tool.output.schema, value)` 再调 `output.render(args, value)` 生成 content。所以失败要 **throw**，不要返回 `{isError:true}`——throw 会被宿主转成 `Error: <message>` 的 isError 结果。
 - 2026-10-16 MCP `tools/call` 成功时**没有 `isError` 字段**（缺失即成功），`result.content[0].text` 是需要 `JSON.parse` 的字符串；`POST /mcp` 回 `text/event-stream`，要按 SSE 解 `event: message\ndata: {...}`，会话靠响应头 `Mcp-Session-Id`，**千万别开 `GET /mcp`**（长连接永不结束，会挂住调用方）。
-- 2026-10-16 Codex CLI（`codex-cli 0.130.0-alpha.5`，`%LOCALAPPDATA%\OpenAI\Codex\bin\codex.exe`）未登录时 `codex exec` **静默挂起不返回**，只能靠 `codex login status`（非 0 退出 = 未登录）提前拦；`codex mcp add <名> --url <URL>` 对已存在的名字是就地覆盖、退出码 0，不需要先 remove。
-- 2026-10-16 **不要关闭或重启 DeepSeek Harness**：用户当前就是通过这个应用在对话，重启等于把会话掐掉。服务端代码的改动只能留到用户自己下次自然启动时生效。
+- 2026-10-16 Codex CLI（`codex-cli 0.130.0-alpha.5`，`%LOCALAPPDATA%\OpenAI\Codex\bin\codex.exe`）的 MCP 注册：`codex mcp add <名> --url <URL>` 对已存在的名字是就地覆盖、退出码 0，不需要先 remove。~~未登录时 `codex exec` 静默挂起~~ 这条已被下一条推翻。
+- 2026-10-16 **不要关闭或重启 DeepSeek Harness**：用户当前就是通过这个应用在对话，重启等于把会话掐掉。服务端代码的改动只能留到用户自己下次自然启动时生效（只改 client.js 的话刷新页面就够）。
+- 2026-10-16 本机 codex 走第三方中转：`~/.codex/config.toml` 里 `model_provider="custom"`、`base_url="https://new.ruiflux.sbs"`、`wire_api="responses"`、`experimental_bearer_token`、`requires_openai_auth=false`，**没有 auth.json**。所以 `codex login status` 永远报 Not logged in —— 它只反映 OpenAI 账号登录，不反映 bearer token 是否可用，**不能拿它当就绪判据**（插件曾据此误报"未登录"）。
+- 2026-10-16 **中转站 `new.ruiflux.sbs` 当前不可达**：TCP 443 通（DNS 被 Clash fake-ip 解析到 `198.18.0.79`），代理隧道也建立成功（`CONNECT` 返回 200），但 TLS 握手对端一个字节不回，报 `schannel: failed to receive handshake`。同一代理下访问 `api.openai.com` 正常（401），所以不是代理配置问题，是该中转站挂了。
+- 2026-10-16 `codex exec` 的三个坑：① `Reading additional input from stdin...` **即使 stdin 已关闭也会照打**，不能拿它判断「卡在等输入」；② 重连/传输错误只在 `--json` 模式下作为 `{"type":"error"}` 事件打到 **stdout**，人类可读模式下什么都不输出，只表现为静默挂死；③ 它会 spawn MCP 服务器和沙箱子进程，继承的 stdout/stderr 管道被子进程握着，`child.kill()` 后 `close` 事件迟迟不来 —— 实测 20 秒超时要 105 秒才 resolve，必须到点直接 resolve 并 `taskkill /T /F`。
