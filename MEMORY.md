@@ -1,5 +1,6 @@
 # 长期记忆
 
+- 2026-10-15 客户端 `exports.inject` 是**服务声明**，不是给组件传参的清单：宿主只在声明过的服务上放行，访问未声明的 `ctx.locale` 会在渲染进程抛 `cannot get property "locale" without inject`，整个 client bundle 加载失败、市场弹出「恢复/卸载此插件」。清空过它一次，代价是应用打不开。
 - 2026-10-14 本仓库从 2 插件 3 页面合并为 1 插件 1 页面（`dsh-desktop-platform`，导航名「综合平台」），3 个页签：用量统计 / 归档历史 / 记忆系统。
 - 2026-10-14 设置导航顺序：宿主内置占 -10..20（账号/通用/模型/插件/Agent 预设），第三方 IM机器人 占 21，自制页用 `order: 900` 钉在最后。
 - 2026-10-14 pnpm 对 `file:` 依赖会复用 store 旧副本，版本号不变时 `pnpm install --force` 也不重新拷贝；`install-to-profile.ps1` 改为安装前先删 `node_modules\<name>`。

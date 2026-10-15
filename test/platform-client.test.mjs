@@ -133,6 +133,22 @@ if (typeof entry.order !== 'number') throw new Error('section has no numeric ord
 if (entry.order <= 100) throw new Error(`order ${entry.order} risks landing above a future host section (host max today ${hostMax})`)
 console.log(`order: ${entry.order} (host pages max ${hostMax}, first installed third party 21)`)
 
+/**
+ * The host hands a service over only if the plugin declared it: touching an
+ * undeclared `ctx.<name>` throws in the renderer ("cannot get property
+ * \"locale\" without inject") and the whole client bundle fails to load,
+ * which the market reports as this plugin breaking the profile. Trim the
+ * declared list and this is the assertion that stops it.
+ */
+const declared = new Set(plugin.inject)
+const core = new Set(['inject', 'effect'])
+const touched = new Set([...source.matchAll(/\bctx\.([A-Za-z_][\w]*)/g)].map((match) => match[1]))
+const undeclared = [...touched].filter((name) => !declared.has(name) && !core.has(name))
+if (undeclared.length > 0) {
+  throw new Error(`client touches undeclared ctx services: ${undeclared.join(', ')} (declared: ${[...declared].join(', ') || 'none'})`)
+}
+console.log(`inject: declares ${[...declared].join(', ')} · client touches ${[...touched].sort().join(', ')}`)
+
 const tree = component(entry.inject())
 if (tree.type !== 'div' || tree.props.className !== 'dshPlatform') throw new Error('section root is not the platform shell')
 const [tabBarElement, panelHost] = tree.children

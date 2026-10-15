@@ -2267,7 +2267,12 @@ window.__ModuleLoader__.load({
             React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: current >= pages, onClick: () => setPage(current + 1) }, t('log.next')))))
     }
 
-    const inject = []
+    // Declared soft dependencies. The host refuses to hand over a service that
+    // is not named here — `ctx.locale` without this list throws
+    // "cannot get property \"locale\" without inject" in the renderer, and the
+    // whole client bundle fails to load. `slots` is unused by the pages today
+    // but stays declared: the section is registered through it.
+    const inject = ['slots', 'locale', 'configForms']
     function apply(ctx) {
       installStyles()
       // Permanent deletion goes through the Host's own `session.delete`
