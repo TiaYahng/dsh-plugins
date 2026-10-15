@@ -17,9 +17,12 @@
 - 2026-10-15 跨插件挂载别人注册的设置页时，必须连 `close` 和 `t`（`ctx.locale.bind(entry.options.locale)`）一起给；缺 `t` 会在渲染期抛错、页签白屏。
 - 2026-10-15 slot 记录的命名空间在 `entry.locale`（与 component/inject 同级），`entry.options` 里只有 key/id/order/label/priority；读错会静默退化成回显 key。
 - 2026-10-15 挂载别人的设置页做不到「只显示其中几页」：页签条是对方组件内部的 state，外部无法隐藏单个页签，用户因此要求删掉「免费模型」那一页。结论：这 4 页改为自建前端，只读它的 `/api/our-free-model/*`。
-- 2026-10-15 综合平台 4 个外层页签：用量统计 / 归档历史 / 记忆系统 / FreeModel；FreeModel 的 8 个页面在页内导航里（用户嫌 11 个外层页签太多、太不像原版）。
+- 2026-10-15 channel pack 不是独立安装的插件，它躺在 `dsh-our-free-model\vendor\channel-pack\pack.js`（183 个 RPC 方法），经宿主 `/api` → `channel-pack` 调用；账号池/模型黑名单/每日签到都在它那边，插件只是转发。
+- 2026-10-15 调 pack 只能 `ctx.get('connection')` 再 `rpc.call('/api','channel-pack',{method,payload},signal)`；`ctx.connection` 直接属性访问属于未声明服务，会抛错并让 client bundle 整个加载失败。
+- 2026-10-15 宿主一共 119 个 `--dsw-alias-*`，state 色相只有 `business/idle/success/warn/error` 五个；写 `info`/`brand`/`warning`/`danger` 不会报错而是整条声明作废（渐变/文字消失）。快照在 `test/dsw-tokens.json`，自检逐个核对。
+- 2026-10-15 综合平台 4 个外层页签：用量统计 / 归档历史 / 记忆系统 / FreeModel；FreeModel 的 9 个页面在页内导航里（用户嫌 11 个外层页签太多、太不像原版）。
 - 2026-10-15 FreeModel 的看板与运行日志不需要 channel pack：`GET /api/our-free-model/stats` 一个接口就够（`grand`/`models`/`days`/`savings` + 最近 200 条 `samples`，含 `truncated`/`noUsage` 标记）。
-- 2026-10-15 FreeModel 唯一没搬的页是「白嫖模型接入」：它读被吸收的 channel pack 的 RPC（`connection.rpc.call('/api', 'channel-pack', { method: 'usage.tokenLedger' })`），本机没装那个 pack，拿不到结构就不写。
+- 2026-10-15 FreeModel 唯一不读 `/api` 的页是「模型接入」：13 个渠道的账号与模型走 channel pack 的 RPC（`provider.status` / `account.list` / `model.list` / `provider.setEnabled` 等），13 个渠道状态一次问完，账号与模型折叠起来才加载。
 - 2026-10-15 README 只留用途（页签表 + 安装一行），实现与踩坑移到 `docs/ENGINEERING.md`。
 - 2026-10-15 仓库已推到 `https://github.com/TiaYahng/dsh-plugins`（公开，主分支 `main`，本地 master 已改名）。本机没有 `gh` CLI，但 Windows 凭据管理器里存着 github.com 的 40 位 token：`git credential fill` 能取到，可直接用它调 GitHub API（建仓库、设描述）。
 - 2026-10-15 全局 git 配置里第二条 `credential.helper`（`!".../PortableGit/.../git-credential-manager.exe"`）指向不存在的文件，每次 push 会报一次 `store: ... No such file or directory`——是噪音，推送本身照样成功。

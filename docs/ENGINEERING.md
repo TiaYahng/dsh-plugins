@@ -28,6 +28,32 @@ FreeModel 的 8 个页面不占外层页签：外层只有 1 个 `freemodel` 页
   `SlotCore.register` 只把 `key/id/order/label/priority` 收进 `options`。读错会静默走回退分支，
   界面全是原始 key（当时截图里一片 `nav.tab.free`）。
 
+## 模型接入：走宿主 RPC，不是 /api
+
+账号渠道的数据**不在** `dsh-our-free-model` 那里：它把 channel pack 吸收进了自己的
+`vendor/channel-pack/pack.js`，再通过宿主的 RPC 路由 `/api` → `channel-pack` 调用。
+pack 有 183 个方法，我们只用这几个：
+
+| 方法 | 载荷 | 返回 |
+| --- | --- | --- |
+| `provider.status` | `{ providers: string[] }` | `{ statuses: { [p]: { models: {total,disabled}, accounts: {total,enabled}, closed } } }` |
+| `account.list` | `{ provider }` | `{ accounts: [{ id, nickname, enabled, refreshable, expiresAt, createdAt }] }` |
+| `account.create` | `{ provider }` | `{ authUrl }`（两段式登录，落地要等对方重定向） |
+| `account.update` | `{ accountId, patch: { enabled } }` | — |
+| `account.delete` / `account.refresh` | `{ accountId }` | — |
+| `model.list` | `{ provider }` | `{ models: [{ id, name, disabled, dead, isFree? }] }` |
+| `model.setDisabled` | `{ provider, modelId, disabled }` | — |
+| `provider.setEnabled` | `{ provider, enabled }` | `{ provider, enabled, models, accounts }` |
+
+**桥只能读 `ctx.get('connection')`，不能读 `ctx.connection`。** 宿主只交出声明过的服务，
+未声明的属性访问会在渲染进程抛错并带走整个 client bundle（见上面那条 inject 规矩）；
+`ctx.get()` 是机会性查找，问不到就返回 `undefined`，这才是可选服务该用的读法。
+拿不到 connection 时页面显示一句说明，而不是渲染一张空卡片——空卡片读起来就是「你没有账号」。
+
+13 个渠道的状态一次 `provider.status` 问完；账号和模型**折叠起来才加载**，所以打开这一页
+只发一轮请求。`provider.setEnabled(false)` 的语义是「关掉它全部模型 + 停用全部账号」，
+pack 源码里写明顺序不可颠倒，所以这一页不自己拼这个操作，只发一次调用。
+
 ## FreeModel 的玻璃质感
 
 照 `dsh-our-free-model` 的视觉重做：fixed 的 aurora 背景（三团 blur 70px 的色斑 + 漂移动画）、
@@ -180,7 +206,10 @@ profile bundle "<name>" declares no dsh.bundle in its package.json
 ## 维护规范
 
 - **`exports.inject` 是服务声明，不能因为「没人用了」就删。** 宿主只在声明过的服务上放行：访问未声明的 `ctx.locale` 会在渲染进程抛 `cannot get property "locale" without inject`，整个 client bundle 加载失败，宿主判定 profile 失败并弹出「恢复 / 卸载此插件」——表现是**应用打不开**，日志里只有一行 renderer stderr（`harness.log` 的 `Failed to load plugins` 段）。`test/platform-client.test.mjs` 现在扫描源码里所有 `ctx.<name>`（`inject` / `effect` 除外），要求它们都在声明里。
-- 语义色只用 `--dsw-alias-*`，样式表里不出现硬编码色值（自检会查）。
+- **语义色只用 `--dsw-alias-*`**，而且**必须是宿主真的定义了的**。宿主一共 119 个
+  `--dsw-alias-*`，state 只有五个色相：`business` / `idle` / `success` / `warn` / `error`。
+  `info`、`brand`、`warning`、`danger` 都是猜的——写上去不会报错，而是**整条声明作废**，
+  渐变和文字直接消失。`test/dsw-tokens.json` 是宿主包里的快照，自检会逐个核对。
 - 文案必须 `ctx.locale.register(NS, { zh, en })`，中英同批加，自检会比对 key 齐平。
 - 服务端可以拆子文件；**客户端不可拆**——客户端模块加载器（`dsh-client-modules`）的 `require`
   只认平台 seed 名与已注册的模块 id，没有同步相对导入，拆了只能走异步 chunk。

@@ -74,6 +74,36 @@ window.__ModuleLoader__.load({
       "fm.dashboard": 'Dashboard',
       "fm.logs": 'Call log',
       "fm.gateway": 'Gateway',
+      "fm.accounts": '模型接入',
+      "accounts.intro": '这些账号与模型开关不在插件里，而是被吸收的 channel pack 的数据：账号池、每日签到、模型黑名单都归它管。本页通过宿主的 RPC 直接读写，折叠起来才加载，所以打开这一页不会一次发十几轮请求。',
+      "accounts.loading": '正在读取渠道状态…',
+      "accounts.refresh": '刷新',
+      "accounts.working": '处理中…',
+      "accounts.noBridge": '这个宿主没有提供 connection 服务，页面的渠道数据读不到。宿主是旧版本，或该能力被关掉了。',
+      "accounts.accounts": '账号',
+      "accounts.models": '模型',
+      "accounts.hidden": '已隐藏',
+      "accounts.enabled": '启用',
+      "accounts.disabled": '已停用',
+      "accounts.enable": '启用',
+      "accounts.disable": '停用',
+      "accounts.refreshed": '账号已刷新。',
+      "accounts.remove": '删除',
+      "accounts.none": '还没有账号。点「添加账号」走一遍该服务商的登录流程。',
+      "accounts.add": '添加账号',
+      "accounts.loginHint": '打开下面的链接完成登录，然后回到这里点刷新；账号要等对方重定向回来才落地。',
+      "accounts.foldAccounts": '账号',
+      "accounts.foldModels": '模型',
+      "accounts.openAll": '全部打开',
+      "accounts.closeAll": '全部关闭',
+      "accounts.free": '免费',
+      "accounts.dead": '已失效',
+      "accounts.show": '显示',
+      "accounts.hide": '隐藏',
+      "accounts.state.on": 'Available',
+      "accounts.state.off": 'No accounts',
+      "accounts.state.closed": 'All closed',
+
       "usage.title": 'Totals',
       intro: 'Token accounting folded from this profile’s stored session logs. Counts come from what each provider reported, so a route that reports no usage contributes none.',
       refresh: 'Refresh',
@@ -328,6 +358,8 @@ window.__ModuleLoader__.load({
       "dash.success": 'Success',
       "dash.tokens": 'Tokens',
       "dash.saved": 'Saved',
+      "dash.reasoningHint": 'Reasoning tokens are counted, not timed',
+      "dash.noData": 'no measured traffic yet',
       "dash.estimated": 'Some of these figures are estimated: the plugin has no lifetime failure count of its own yet, so failures are derived from the per-model rows.',
       "dash.byModel": 'By model',
       "dash.byDay": 'Last 14 days',
@@ -378,6 +410,36 @@ window.__ModuleLoader__.load({
       "fm.dashboard": '数据看板',
       "fm.logs": '运行日志',
       "fm.gateway": '网关设置',
+      "fm.accounts": '模型接入',
+      "accounts.intro": '这些账号与模型开关不在插件里，而是被吸收的 channel pack 的数据：账号池、每日签到、模型黑名单都归它管。本页通过宿主的 RPC 直接读写；折叠起来才加载，所以打开这一页不会一次发十几轮请求。',
+      "accounts.loading": '正在读取渠道状态…',
+      "accounts.refresh": '刷新',
+      "accounts.working": '处理中…',
+      "accounts.noBridge": '这个宿主没有提供 connection 服务，页面的渠道数据读不到：宿主版本太老，或该能力被关掉了。',
+      "accounts.accounts": '账号',
+      "accounts.models": '模型',
+      "accounts.hidden": '已隐藏',
+      "accounts.enabled": '启用',
+      "accounts.disabled": '已停用',
+      "accounts.enable": '启用',
+      "accounts.disable": '停用',
+      "accounts.refreshed": '账号已刷新。',
+      "accounts.remove": '删除',
+      "accounts.none": '还没有账号。点「添加账号」走一遍该服务商的登录流程。',
+      "accounts.add": '添加账号',
+      "accounts.loginHint": '打开下面的链接完成登录，再回到这里点刷新——账号要等对方重定向回来才落地。',
+      "accounts.foldAccounts": '账号',
+      "accounts.foldModels": '模型',
+      "accounts.openAll": '全部打开',
+      "accounts.closeAll": '全部关闭',
+      "accounts.free": '免费',
+      "accounts.dead": '已失效',
+      "accounts.show": '显示',
+      "accounts.hide": '隐藏',
+      "accounts.state.on": '可用',
+      "accounts.state.off": '无账号',
+      "accounts.state.closed": '已全部关闭',
+
       "usage.title": '统计概览',
       intro: '统计来自本 Profile 已存储的会话事件日志。计数取自各服务商实际上报的用量，未上报用量的请求不计入。',
       refresh: '刷新',
@@ -632,6 +694,8 @@ window.__ModuleLoader__.load({
       "dash.success": '成功率',
       "dash.tokens": 'tokens',
       "dash.saved": '节省',
+      "dash.reasoningHint": '推理 token 不计入首字延迟以外的任何速率统计',
+      "dash.noData": '还没有实测流量',
       "dash.estimated": '部分数字是估算的：插件自己还没有历史失败计数，失败数由按模型的行推出来。',
       "dash.byModel": '按模型',
       "dash.byDay": '最近 14 天',
@@ -732,7 +796,7 @@ window.__ModuleLoader__.load({
 .dshPlatformPill{border:.5px solid var(--dsw-alias-border-l4);border-radius:999px;color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-primary));background:var(--dsw-alias-bg-module-platform);padding:3px 10px;font-size:11px;line-height:18px;white-space:nowrap}
 .dshPlatformPill.strong{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2)}
 .dshPlatformPill.ok{color:var(--dsw-alias-state-success-primary)}
-.dshPlatformPill.warn{color:var(--dsw-alias-state-warning-primary,var(--dsw-alias-label-primary))}
+.dshPlatformPill.warn{color:var(--dsw-alias-state-warn-primary)}
 .dshPlatformPill.danger{color:var(--dsw-alias-state-error-primary)}
 .dshPlatformPill.off{opacity:.6}
 .dshPlatformTableWrap{overflow-x:auto}
@@ -760,6 +824,42 @@ window.__ModuleLoader__.load({
 .dshFmPage{display:flex;flex-direction:column;gap:20px;animation:dshFmPageIn .4s cubic-bezier(.16,1,.3,1)}
 @keyframes dshFmPageIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .dshFm .dshPlatformCard,.dshFm .dshPlatformStat,.dshFm .dshPlatformChain{background:color-mix(in srgb,var(--dsw-alias-bg-layer-2) 68%,transparent);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 78%,transparent);border-radius:16px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 6%,transparent),0 12px 34px color-mix(in srgb,var(--dsw-alias-label-primary) 9%,transparent)}
+.dshFmChanWrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.dshFmChan{position:relative;display:flex;flex-direction:column;gap:12px;padding:16px 17px 15px;border-radius:16px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 85%,transparent);background:color-mix(in srgb,var(--dsw-alias-bg-layer-3) 78%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 5%,transparent),0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 5%,transparent);overflow:hidden;transition:transform .22s cubic-bezier(.32,.72,0,1),box-shadow .24s ease,border-color .2s ease}
+.dshFmChan::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--dshFmAccent,var(--dsw-alias-state-business-primary)),transparent 78%);opacity:.95}
+.dshFmChan:hover{transform:translateY(-3px);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 8%,transparent),0 18px 40px color-mix(in srgb,var(--dsw-alias-label-primary) 15%,transparent);border-color:color-mix(in srgb,var(--dshFmAccent,var(--dsw-alias-state-business-primary)) 55%,transparent)}
+.dshFmChan.isOff{opacity:.62}
+.dshFmChanHead{display:flex;align-items:center;gap:11px}
+.dshFmChanLogo{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;font-weight:800;font-size:13px;color:var(--dsw-alias-label-primary);letter-spacing:-.3px;background:linear-gradient(150deg,var(--dshFmAccent,var(--dsw-alias-state-business-primary)),color-mix(in srgb,var(--dshFmAccent,var(--dsw-alias-state-business-primary)) 45%,var(--dsw-alias-bg-layer-4,var(--dsw-alias-bg-layer-1))));box-shadow:0 6px 16px color-mix(in srgb,var(--dshFmAccent,var(--dsw-alias-state-business-primary)) 34%,transparent),inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 22%,transparent);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.dshFmChan:hover .dshFmChanLogo{transform:scale(1.06) rotate(-3deg)}
+.dshFmChanName{font-weight:700;font-size:13.5px;letter-spacing:-.2px;color:var(--dsw-alias-label-primary)}
+.dshFmChanOrg{font-size:10.5px;color:var(--dsw-alias-label-tertiary)}
+.dshFmChanNote{margin:0;font-size:11.5px;line-height:17px;color:var(--dsw-alias-label-secondary)}
+.dshFmPills{gap:6px;flex-wrap:wrap;display:flex}
+.dshFmBar{gap:6px;flex-wrap:wrap;display:flex}
+.dshFmBar .dshPlatformButton{margin:0}
+.dshFmFold{border-top:1px dashed color-mix(in srgb,var(--dsw-alias-border-l1) 85%,transparent);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.dshFmLogin{display:flex;flex-direction:column;gap:6px;padding:9px 10px;border-radius:11px;background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 70%,transparent)}
+.dshFmAcctList{display:flex;flex-direction:column;gap:6px}
+.dshFmAcct{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:7px 10px;border-radius:11px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l1) 90%,transparent);background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 62%,transparent);transition:border-color .18s ease,background .18s ease}
+.dshFmAcct:hover{border-color:var(--dsw-alias-border-l2);background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 88%,transparent)}
+.dshFmAcct.isPending{border-style:dashed}
+.dshFmAcctName{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.dshFmAcctMeta{font-size:10.5px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}
+.dshFmAcctActs{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap}
+.dshFmModelList{display:flex;flex-direction:column;gap:4px;max-height:238px;overflow:auto;padding-right:2px}
+.dshFmModelRow{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:9px;background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 55%,transparent);transition:background .18s ease}
+.dshFmModelRow:hover{background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 85%,transparent)}
+.dshFmModelRow.isOff{opacity:.5}
+.dshFmModelRow .dshFmId{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--dsw-alias-label-primary)}
+.dshFmSkeleton{border-radius:11px;background:linear-gradient(90deg,color-mix(in srgb,var(--dsw-alias-bg-layer-1) 70%,transparent),color-mix(in srgb,var(--dsw-alias-bg-layer-2) 70%,transparent),color-mix(in srgb,var(--dsw-alias-bg-layer-1) 70%,transparent));background-size:220% 100%;animation:dshFmShimmer 1.5s ease-in-out infinite}
+@keyframes dshFmShimmer{from{background-position:120% 0}to{background-position:-20% 0}}
+.dshFmKpi{display:flex;flex-direction:column;gap:3px;padding:13px 15px;border-radius:15px}
+.dshFmKpiRow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.dshFmKpi.isWarn .dshFmKpiValue{color:var(--dsw-alias-state-warn-primary)}
+.dshFmKpiLabel{font-size:10.5px;letter-spacing:.2px;color:var(--dsw-alias-label-tertiary)}
+.dshFmKpiValue{font-size:20px;font-weight:700;letter-spacing:-.4px;color:var(--dsw-alias-label-primary)}
+.dshFmKpiSub{font-size:10.5px;color:var(--dsw-alias-label-tertiary)}
 .dshFm .dshPlatformInput,.dshFm .dshPlatformSelect,.dshFm .dshPlatformTextarea{background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 72%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-border-l2) 70%,transparent);border-radius:10px}
 .dshFm .dshPlatformPill{background:color-mix(in srgb,var(--dsw-alias-bg-layer-3) 62%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-border-l2) 60%,transparent)}
 .dshFm .dshPlatformMeter{background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 70%,transparent)}
@@ -801,10 +901,23 @@ window.__ModuleLoader__.load({
       return value.toLocaleString(undefined, { maximumFractionDigits: 2 })
     }
 
-    function Stat({ label, value }) {
+    function Stat({ label, value, sub }) {
       return React.createElement('div', { className: 'dshPlatformStat' },
         React.createElement('div', { className: 'dshPlatformStatLabel' }, label),
-        React.createElement('div', { className: 'dshPlatformStatValue' }, value))
+        React.createElement('div', { className: 'dshPlatformStatValue' }, value),
+        sub !== undefined && React.createElement('div', { className: 'dshPlatformStatHint' }, sub))
+    }
+
+    /**
+     * The owner's KPI tile: a quiet label, a big number, one line of context.
+     * Used by the FreeModel dashboard, where the numbers come from the owner's
+     * own ledger and read exactly like the tiles on its page.
+     */
+    function Kpi ({ label, value, sub, tone }) {
+      return React.createElement('div', { className: tone === undefined ? 'dshFmKpi' : `dshFmKpi ${tone}` },
+        React.createElement('span', { className: 'dshFmKpiLabel' }, label),
+        React.createElement('b', { className: 'dshFmKpiValue' }, value),
+        sub !== undefined && React.createElement('span', { className: 'dshFmKpiSub' }, sub))
     }
 
     /** Card wrapper shared by the three tabs. */
@@ -1579,7 +1692,210 @@ window.__ModuleLoader__.load({
      * switching tabs and back never discards unsaved text or re-requests what
      * is already on screen.
      */
-    /* ── FreeModel：一条页内导航，底下是八个子页面 ───────────────────────────
+    /* ── 白嫖模型接入：channel pack 的账号与模型 ──────────────────────────────
+       The accounts and the per-provider model blacklist do NOT live in
+       dsh-our-free-model: it absorbed the pack and reaches it over the Host's
+       own RPC router, `/api` → `channel-pack`. Same door, different room —
+       `ctx.connection.rpc.call` is the Host service, and the pack is vendored
+       inside the plugin rather than installed on its own, so there is no
+       separate plugin to ask. Read the same way the owner reads it. */
+
+    const CHANNELS = [
+      { id: 'codearts', name: 'CodeArts', org: '华为云', accent: 'business', note: 'DeepSeek · GLM · openPangu，每日免费额度' },
+      { id: 'buddy', name: 'WorkBuddy 国内版', org: '腾讯 · copilot.tencent.com', accent: 'idle', note: 'CodeBuddy 同一端点：DeepSeek · Kimi · GLM 免费线' },
+      { id: 'workbuddy', name: 'WorkBuddy 国际版', org: '腾讯 · workbuddy.ai', accent: 'business', note: '国际版端点：独立账号与积分体系' },
+      { id: 'lobsterai', name: 'LobsterAI', org: '有道', accent: 'warn', note: '龙虾 · 每日签到积分' },
+      { id: 'qoder', name: 'Qoder', org: '阿里系', accent: 'success', note: '每日 100 Credits，加密推理端点' },
+      { id: 'qodercn', name: 'Qoder 中国版', org: '阿里系', accent: 'success', note: '中国版端点与模型池' },
+      { id: 'trae', name: 'TRAE', org: '字节', accent: 'business', note: '手机号登录' },
+      { id: 'cline', name: 'Cline', org: 'Cline', accent: 'idle', note: 'Cline 账号免费额度' },
+      { id: 'loomy', name: 'Loomy', org: '讯飞', accent: 'success', note: '微信扫码，或短信验证码备用' },
+      { id: 'raccoon', name: 'Raccoon', org: '商汤', accent: 'warn', note: '手机号登录' },
+      { id: 'minimax', name: 'MiniMax Code', org: 'MiniMax', accent: 'error', note: '设备码 + PKCE，每日签到' },
+      { id: 'zcode', name: 'ZCode', org: '智谱', accent: 'idle', note: '浏览器登录（需本机可开浏览器）' },
+      { id: 'gemini', name: 'Gemini', org: 'Google Code Assist', accent: 'warn', note: '本地回调 OAuth 免费线' }
+    ]
+
+    /**
+     * The Host's RPC door into the pack, or null when this build has none.
+     *
+     * Read with `ctx.get()`, never as a property: the Host hands a service over
+     * only when it is declared in `inject`, and an undeclared property read
+     * throws in the renderer and takes the whole client bundle with it.
+     * `ctx.get()` is the opportunistic lookup — it answers `undefined` instead,
+     * which is what an optional service needs.
+     */
+    function packBridge (ctx) {
+      if (ctx === undefined || ctx === null || typeof ctx.get !== 'function') return null
+      let connection = null
+      try { connection = ctx.get('connection') } catch { connection = null }
+      if (connection?.rpc?.call === undefined) return null
+      return async (method, payload, timeoutMs = 60_000) => {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), timeoutMs)
+        try {
+          const result = await connection.rpc.call('/api', 'channel-pack', { method, payload }, controller.signal)
+          if (result?.ok === true) return result.value
+          throw new Error(result?.error?.message ?? result?.error?.code ?? 'rpc-failed')
+        } finally {
+          clearTimeout(timer)
+        }
+      }
+    }
+
+    function expiryOf (account) {
+      return Number.isFinite(account?.expiresAt) ? new Date(account.expiresAt).toLocaleString() : null
+    }
+
+    function ChannelCard ({ t, ctx, channel, status, onChanged, onError }) {
+      const [open, setOpen] = React.useState(null)
+      const [rows, setRows] = React.useState(null)
+      const [models, setModels] = React.useState(null)
+      const [busy, setBusy] = React.useState('')
+      const [note, setNote] = React.useState('')
+      const [login, setLogin] = React.useState(null)
+      const accounts = status?.accounts ?? {}
+      const catalogue = status?.models ?? {}
+      const connected = (accounts.enabled ?? 0) > 0
+      const closed = status?.closed === true
+      const tone = closed ? 'closed' : connected ? 'on' : 'off'
+      const load = async (kind, run) => {
+        setBusy(kind)
+        setNote('')
+        try {
+          await run()
+        } catch (failure) {
+          setNote(messageOf(failure))
+          onError(channel, failure)
+        } finally {
+          setBusy('')
+        }
+      }
+      const bridge = React.useMemo(() => packBridge(ctx), [ctx])
+      const call = async (kind, method, payload, timeout) => load(kind, async () => {
+        if (bridge === null) throw new Error(t('accounts.noBridge'))
+        await bridge(method, payload, timeout)
+        await onChanged()
+      })
+      const fold = async (which) => {
+        const next = open === which ? null : which
+        setOpen(next)
+        if (next === 'accounts' && rows === null && bridge !== null) {
+          const value = await bridge('account.list', { provider: channel.id })
+          setRows(value?.accounts ?? [])
+        }
+        if (next === 'models' && models === null && bridge !== null) {
+          const value = await bridge('model.list', { provider: channel.id })
+          setModels(value?.models ?? [])
+        }
+      }
+      const login2 = async () => load('login', async () => {
+        if (bridge === null) throw new Error(t('accounts.noBridge'))
+        // The pack's login is two-phase: `account.create` hands back a URL to
+        // open, and the account only lands once the provider has redirected.
+        const value = await bridge('account.create', { provider: channel.id }, 90_000)
+        setLogin(value?.authUrl ?? value?.url ?? '')
+      })
+      const accountRows = open !== 'accounts'
+        ? null
+        : rows === null
+          ? React.createElement('div', { className: 'dshFmSkeleton', style: { minHeight: 44 } })
+          : rows.length === 0
+            ? React.createElement('p', { className: 'dshPlatformNote' }, t('accounts.none'))
+            : React.createElement('div', { className: 'dshFmAcctList' }, rows.map((account) => {
+              const expiry = expiryOf(account)
+              const pending = account.refreshable !== true && expiry === null
+              return React.createElement('div', { className: pending ? 'dshFmAcct isPending' : 'dshFmAcct', key: account.id },
+                React.createElement('span', { className: 'dshFmAcctName', title: account.nickname ?? account.id }, account.nickname ?? account.id),
+                React.createElement('span', { className: 'dshFmAcctMeta' },
+                  account.enabled === false ? t('accounts.disabled') : t('accounts.enabled'),
+                  expiry === null ? '' : ` · ${expiry}`),
+                React.createElement('div', { className: 'dshFmAcctActs' },
+                  React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void call('refresh', 'account.refresh', { accountId: account.id }, 90_000).then(() => { setNote(t('accounts.refreshed')) }) } }, busy === 'refresh' ? t('accounts.working') : t('accounts.refresh')),
+                  React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void call('toggle', 'account.update', { accountId: account.id, patch: { enabled: account.enabled === false } }) } }, account.enabled === false ? t('accounts.enable') : t('accounts.disable')),
+                  React.createElement('button', { className: 'dshPlatformButton dshPlatformDanger', type: 'button', disabled: busy !== '', onClick: () => { void call('delete', 'account.delete', { accountId: account.id }) } }, t('accounts.remove'))))
+            }))
+      const modelRows = open !== 'models'
+        ? null
+        : models === null
+          ? React.createElement('div', { className: 'dshFmSkeleton', style: { minHeight: 44 } })
+          : React.createElement('div', { className: 'dshFmModelList' }, models.map((model) => React.createElement('div', { className: model.disabled === true ? 'dshFmModelRow isOff' : 'dshFmModelRow', key: model.id },
+            React.createElement('code', { className: 'dshFmId' }, model.name ?? model.id),
+            model.isFree === true && React.createElement(Pill, { tone: 'ok' }, t('accounts.free')),
+            model.dead === true && React.createElement(Pill, { tone: 'danger' }, t('accounts.dead')),
+            React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void call('model', 'model.setDisabled', { provider: channel.id, modelId: model.id, disabled: model.disabled !== true }) } }, model.disabled === true ? t('accounts.show') : t('accounts.hide')))))
+      return React.createElement('article', { className: closed ? 'dshFmChan isOff' : 'dshFmChan', style: { '--dshFmAccent': `var(--dsw-alias-state-${channel.accent}-primary)` } },
+        React.createElement('div', { className: 'dshFmChanHead' },
+          React.createElement('span', { className: 'dshFmChanLogo' }, channel.name.slice(0, 2)),
+          React.createElement('div', null,
+            React.createElement('div', { className: 'dshFmChanName' }, channel.name),
+            React.createElement('div', { className: 'dshFmChanOrg' }, channel.org)),
+          React.createElement(Pill, { tone }, t(`accounts.state.${tone}`))),
+        React.createElement('p', { className: 'dshFmChanNote' }, channel.note),
+        React.createElement('div', { className: 'dshFmPills' },
+          React.createElement(Pill, null, `${t('accounts.accounts')} ${accounts.enabled ?? 0}/${accounts.total ?? 0}`),
+          React.createElement(Pill, null, `${t('accounts.models')} ${catalogue.total ?? 0}`),
+          (catalogue.disabled ?? 0) > 0 && React.createElement(Pill, { tone: 'warn' }, `${t('accounts.hidden')} ${catalogue.disabled}`)),
+        note !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, note),
+        login !== '' && React.createElement('div', { className: 'dshFmLogin' },
+          React.createElement('p', { className: 'dshPlatformNote' }, t('accounts.loginHint')),
+          React.createElement('code', { className: 'dshPlatformCode' }, login)),
+        React.createElement('div', { className: 'dshFmBar' },
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void call('provider', 'provider.setEnabled', { provider: channel.id, enabled: closed || !connected }) } }, closed || !connected ? t('accounts.openAll') : t('accounts.closeAll')),
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void login2() } }, busy === 'login' ? t('accounts.working') : t('accounts.add')),
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void fold('accounts') } }, `${t('accounts.foldAccounts')}${accounts.total === undefined ? '' : ` (${accounts.total})`}`),
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void fold('models') } }, `${t('accounts.foldModels')}${catalogue.total === undefined ? '' : ` (${catalogue.total})`}`)),
+        open !== null && React.createElement('div', { className: 'dshFmFold' },
+          accountRows,
+          modelRows))
+    }
+
+    function AccountsPage ({ t, ctx }) {
+      const [statuses, setStatuses] = React.useState(null)
+      const [error, setError] = React.useState('')
+      const [absent, setAbsent] = React.useState(false)
+      const [nonce, setNonce] = React.useState(0)
+      const bridge = React.useMemo(() => packBridge(ctx), [ctx])
+      React.useEffect(() => {
+        let alive = true
+        if (bridge === null) {
+          setAbsent(true)
+          return undefined
+        }
+        setAbsent(false)
+        setError('')
+        bridge('provider.status', { providers: CHANNELS.map((channel) => channel.id) })
+          .then((value) => { if (alive) setStatuses(value?.statuses ?? {}) })
+          .catch((failure) => { if (alive) setError(messageOf(failure)) })
+        return () => { alive = false }
+      }, [bridge, nonce])
+      const reload = () => setNonce((value) => value + 1)
+      if (absent) {
+        return React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformNote' }, t('accounts.noBridge')))
+      }
+      if (statuses === null && error === '') {
+        return React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformNote', role: 'status' }, t('accounts.loading')))
+      }
+      const cards = CHANNELS.map((channel) => React.createElement(ChannelCard, {
+        key: channel.id,
+        t,
+        ctx,
+        channel,
+        status: statuses?.[channel.id] ?? null,
+        onChanged: reload,
+        onError: (row, failure) => setError(`${row.name}: ${messageOf(failure)}`)
+      }))
+      return React.createElement('div', { className: 'dshPlatform' },
+        React.createElement('p', { className: 'dshPlatformIntro' }, t('accounts.intro')),
+        error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, error),
+        React.createElement('div', { className: 'dshPlatformBar' },
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', onClick: reload }, t('accounts.refresh'))),
+        React.createElement('div', { className: 'dshFmChanWrap' }, cards))
+    }
+
+    /* ── FreeModel：一条页内导航，底下是九个子页面 ───────────────────────────
        One outer tab, one inner nav. The owner plugin splits these across tabs
        of its own; lifting them all into the platform's tab strip made an
        eleven-tab row that read like a different application. The inner nav is
@@ -1590,6 +1906,7 @@ window.__ModuleLoader__.load({
     const FM_SECTIONS = [
       { id: 'upgrade', label: 'fm.upgrade' },
       { id: 'eac', label: 'fm.eac' },
+      { id: 'accounts', label: 'fm.accounts' },
       { id: 'aggregate', label: 'fm.aggregate' },
       { id: 'saver', label: 'fm.saver' },
       { id: 'routing', label: 'fm.routing' },
@@ -1598,7 +1915,7 @@ window.__ModuleLoader__.load({
       { id: 'gateway', label: 'fm.gateway' }
     ]
 
-    function FreeModelSection ({ t }) {
+    function FreeModelSection ({ t, ctx }) {
       const [section, setSection] = React.useState(() => {
         try {
           const saved = window.localStorage.getItem(FM_STORAGE_KEY)
@@ -1614,6 +1931,7 @@ window.__ModuleLoader__.load({
       const pages = {
         upgrade: UpgradePage,
         eac: EacPage,
+        accounts: AccountsPage,
         aggregate: AggregatePage,
         saver: SaverPage,
         routing: RoutingPage,
@@ -1648,10 +1966,10 @@ window.__ModuleLoader__.load({
           role: 'tabpanel',
           id: `dshFmPanel-${section}`,
           'aria-labelledby': `dshFmTab-${section}`
-        }, React.createElement(Page, { t })))
+        }, React.createElement(Page, { t, ctx })))
     }
 
-    function PlatformSection({ t, scope, host }) {
+    function PlatformSection({ t, scope, host, ctx }) {
       const [active, setActive] = React.useState(storedTab)
       const [visited, setVisited] = React.useState(() => new Set([storedTab()]))
       const select = (id) => {
@@ -1668,7 +1986,7 @@ window.__ModuleLoader__.load({
           tabPanel(TABS[0], React.createElement(UsagePanel, { t, scope })),
       tabPanel(TABS[1], React.createElement(ArchivePanel, { t, host })),
       tabPanel(TABS[2], React.createElement(MemoryPanel, { t })),
-      tabPanel(TABS[3], React.createElement(FreeModelSection, { t }))))
+      tabPanel(TABS[3], React.createElement(FreeModelSection, { t, ctx }))))
     }
     /* ── FreeModel：自建的四个页面 ───────────────────────────────────────────
        The state, credentials, ports and the model adapter all belong to the
@@ -1876,13 +2194,13 @@ window.__ModuleLoader__.load({
             React.createElement('div', { className: 'dshPlatformGrid' }, LOCAL_KINDS.map((kind) => React.createElement('div', { className: 'dshPlatformStat', key: kind },
               React.createElement(SwitchRow, { checked: local[kind] !== false, label: t(`saver.kind.${kind}`), hint: t(`saver.kindHint.${kind}`), disabled: busy, onChange: (checked) => { void write('/local-optimize', { [kind]: checked }) } }))))),
           savings !== null && React.createElement(Card, { title: t('saver.savings') },
-            React.createElement('div', { className: 'dshPlatformGrid' },
-              React.createElement(Stat, { label: t('saver.bytesBefore'), value: `${formatNumber(savings.bytesBefore)} B` }),
-              React.createElement(Stat, { label: t('saver.bytesAfter'), value: `${formatNumber(savings.bytesAfter)} B` }),
-              React.createElement(Stat, { label: t('saver.bytesSaved'), value: `${formatNumber(savings.saved)} B` }),
-              React.createElement(Stat, { label: t('saver.blocks'), value: formatNumber(savings.blocks) }),
-              React.createElement(Stat, { label: t('saver.calls'), value: formatNumber(savings.calls) }),
-              React.createElement(Stat, { label: t('saver.promptCalls'), value: formatNumber(savings.promptCalls) })),
+            React.createElement('div', { className: 'dshFmKpiRow' },
+              React.createElement(Kpi, { key: 'before', label: t('saver.bytesBefore'), value: `${formatNumber(savings.bytesBefore)} B` }),
+              React.createElement(Kpi, { key: 'after', label: t('saver.bytesAfter'), value: `${formatNumber(savings.bytesAfter)} B` }),
+              React.createElement(Kpi, { key: 'saved', label: t('saver.bytesSaved'), value: `${formatNumber(savings.saved)} B`, sub: `${savings.percent ?? 0}%` }),
+              React.createElement(Kpi, { key: 'blocks', label: t('saver.blocks'), value: formatNumber(savings.blocks) }),
+              React.createElement(Kpi, { key: 'calls', label: t('saver.calls'), value: formatNumber(savings.calls) }),
+              React.createElement(Kpi, { key: 'prompts', label: t('saver.promptCalls'), value: formatNumber(savings.promptCalls) })),
             React.createElement('div', { className: 'dshPlatformMeter', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(meterWidth), 'aria-label': t('saver.savings') },
               React.createElement('div', { className: Number(savings.percent) > 0 ? 'dshPlatformMeterFill' : 'dshPlatformMeterFillOver', style: { width: `${meterWidth}%` } }))),
           saver !== null && savings === null && React.createElement('p', { className: 'dshPlatformNote' }, t('saver.noData')),
@@ -2239,11 +2557,37 @@ window.__ModuleLoader__.load({
       const tokenTotal = grand === null ? 0 : (grand.input ?? 0) + (grand.output ?? 0) + (grand.reasoning ?? 0)
       const peak = days.reduce((max, day) => Math.max(max, day.total ?? 0), 0)
       const kpis = grand === null ? [] : [
-        React.createElement(Stat, { key: 'calls', label: t('dash.calls'), value: formatNumber(grand.calls) }),
-        React.createElement(Stat, { key: 'turns', label: t('dash.turns'), value: formatNumber(grand.turns) }),
-        React.createElement(Stat, { key: 'ok', label: t('dash.success'), value: percentOf(success, grand.calls ?? 0) }),
-        React.createElement(Stat, { key: 'tokens', label: t('dash.tokens'), value: formatNumber(tokenTotal) }),
-        React.createElement(Stat, { key: 'saved', label: t('dash.saved'), value: savings === null ? '—' : `${formatNumber(savings.saved)} B` })
+        React.createElement(Kpi, {
+          key: 'calls',
+          label: t('dash.calls'),
+          value: formatNumber(grand.calls),
+          sub: `${t('dash.turns')} ${formatNumber(grand.turns)}`
+        }),
+        React.createElement(Kpi, {
+          key: 'ok',
+          label: t('dash.success'),
+          value: percentOf(success, grand.calls ?? 0),
+          sub: `${t('dash.columnFailed')} ${formatNumber(grand.failed ?? 0)}`,
+          tone: (grand.failed ?? 0) > 0 ? 'isWarn' : ''
+        }),
+        React.createElement(Kpi, {
+          key: 'tokens',
+          label: t('dash.tokens'),
+          value: formatNumber(tokenTotal),
+          sub: `${t('dash.columnInput')} ${formatNumber(grand.input)} · ${t('dash.columnOutput')} ${formatNumber(grand.output)}`
+        }),
+        React.createElement(Kpi, {
+          key: 'reasoning',
+          label: t('dash.columnReasoning'),
+          value: formatNumber(grand.reasoning),
+          sub: t('dash.reasoningHint')
+        }),
+        React.createElement(Kpi, {
+          key: 'saved',
+          label: t('dash.saved'),
+          value: savings === null ? '—' : `${formatNumber(savings.saved)} B`,
+          sub: savings === null ? t('dash.noData') : `${savings.percent ?? 0}%`
+        })
       ]
       const dayRows = days.length === 0
         ? React.createElement('p', { className: 'dshPlatformNote' }, t('dash.empty'))
@@ -2281,7 +2625,7 @@ window.__ModuleLoader__.load({
       return React.createElement(OwnerShell, { t, state },
         React.createElement('div', { className: 'dshPlatform' },
           React.createElement('p', { className: 'dshPlatformIntro' }, t('dash.intro')),
-          kpis.length > 0 && React.createElement('div', { className: 'dshPlatformGrid' }, kpis),
+          kpis.length > 0 && React.createElement('div', { className: 'dshFmKpiRow' }, kpis),
           stats !== null && stats.requestFailuresEstimated === true && React.createElement('p', { className: 'dshPlatformMeta' }, t('dash.estimated')),
           table !== null && React.createElement(Card, { title: t('dash.byModel') }, table),
           React.createElement(Card, { title: t('dash.byDay') }, dayRows)))
@@ -2380,7 +2724,7 @@ window.__ModuleLoader__.load({
             id: 'desktop-platform',
             order: SECTION_ORDER,
             label: () => t('nav'),
-            inject: () => ({ t, scope, host })
+            inject: () => ({ t, scope, host, ctx })
           },
           PlatformSection
         )

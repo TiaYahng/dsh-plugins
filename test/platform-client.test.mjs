@@ -77,6 +77,9 @@ const React = {
     children: children.flat(Infinity)
   }),
   useState: (init) => [typeof init === 'function' ? init() : init, () => {}],
+  // Identity memo: this harness re-renders by re-calling the component, so the
+  // only thing a memo has to get right is not throwing.
+  useMemo: (compute) => compute(),
   useEffect: (run) => { if (effectsRun) pendingEffects.push(run) },
   useCallback: (fn) => fn,
   useRef: (value) => ({ current: value }),
@@ -131,6 +134,38 @@ if (typeof entry.label !== 'function' || entry.label() !== 'settings.desktopPlat
 if (styleTags.length !== 1 || styleTags[0].id !== `${ENTRY_ID}-style`) throw new Error('style tag not installed')
 if (styleTags[0].textContent.includes('#fff')) throw new Error('hard-coded colour survived in the stylesheet')
 
+/**
+ * Every colour in this plugin is a host token. A token the host does not
+ * define is not a wrong colour, it is no colour at all: the declaration
+ * becomes invalid at computed-value time and the gradient or text simply
+ * disappears. The host defines five state hues (business, idle, success,
+ * warn, error) — `info`, `brand`, `warning` and `danger` are guesses, and
+ * they were guesses that shipped.
+ *
+ * The list is a snapshot of the host's own bundle, kept here so the check
+ * runs without the application.
+ */
+const dswTokens = new Set(JSON.parse(
+  fs.readFileSync(new URL('./dsw-tokens.json', import.meta.url), 'utf8')
+))
+
+const named = [...source.matchAll(/--dsw-alias-[a-z0-9-]+/g)].map((match) => match[0])
+// A token assembled at runtime (`--dsw-alias-state-${accent}-primary`) cannot
+// be read out of the source, so the accent table is checked by value instead.
+const dynamic = named.filter((token) => !token.endsWith('-'))
+const unknown = [...new Set(dynamic)].filter((token) => !dswTokens.has(token))
+if (unknown.length > 0) {
+  throw new Error(`stylesheet names tokens the host does not define: ${unknown.join(', ')}`)
+}
+
+const accents = [...source.matchAll(/accent: '([a-z-]+)'/g)].map((match) => match[1])
+const badAccents = [...new Set(accents)].filter((accent) => !dswTokens.has(`--dsw-alias-state-${accent}-primary`))
+if (badAccents.length > 0) {
+  throw new Error(`channel accents name a state hue that does not exist: ${badAccents.join(', ')}`)
+}
+console.log(`tokens: ${new Set(dynamic).size} named, ${new Set(accents).size} accent hues — all defined by the host`)
+
+
 // The nav is the settings.section ledger sorted ascending: ours must land after
 // every host page, and stay last even if a future host release adds sections
 // between the built-in tier and the installed third-party tier (IM机器人: 21).
@@ -147,8 +182,15 @@ console.log(`order: ${entry.order} (host pages max ${hostMax}, first installed t
  * declared list and this is the assertion that stops it.
  */
 const declared = new Set(plugin.inject)
-const core = new Set(['inject', 'effect'])
-const touched = new Set([...source.matchAll(/\bctx\.([A-Za-z_][\w]*)/g)].map((match) => match[1]))
+// `get` is the Host's opportunistic lookup: it answers `undefined` for a
+// service nobody declared, which is the only safe way to read an optional one.
+const core = new Set(['inject', 'effect', 'get'])
+// Comments are stripped first: prose that names a service is not a use of it,
+// and a commented-out call must not make the bundle depend on a declaration.
+const code = source
+  .replace(/\/\*[\s\S]*?\*\//g, ' ')
+  .replace(/(^|[^:])\/\/[^\n]*/g, '$1 ')
+const touched = new Set([...code.matchAll(/\bctx\.([A-Za-z_][\w]*)/g)].map((match) => match[1]))
 const undeclared = [...touched].filter((name) => !declared.has(name) && !core.has(name))
 if (undeclared.length > 0) {
   throw new Error(`client touches undeclared ctx services: ${undeclared.join(', ')} (declared: ${[...declared].join(', ') || 'none'})`)
@@ -191,6 +233,9 @@ const PAGES = {
   eac: ['/api/our-free-model/eac/status'],
   aggregate: ['/api/our-free-model/providers'],
   saver: ['/api/our-free-model/token-saver', '/api/our-free-model/local-optimize'],
+  // The account channels are not the owner's routes at all: the pack answers
+  // over the Host's RPC door, so this page asks for nothing on /api.
+  accounts: [],
   routing: ['/api/our-free-model/combos', '/api/our-free-model/summary'],
   // The dashboard and the call log are two readings of the same ledger.
   dashboard: ['/api/our-free-model/stats'],
@@ -205,6 +250,7 @@ const PAGES = {
 }
 
 for (const [id, routes] of Object.entries(PAGES)) {
+  if (routes.length === 0) continue
   rememberedTab = 'freemodel'
   rememberedSection = id
   registered.sections.length = 0
@@ -411,6 +457,101 @@ if (capturedState === null || capturedState.absent !== true) {
 }
 console.log('owner absent (404): every page shows the install hint instead of an error')
 
+
+/**
+ * The account channels are the one page that does not read /api: they go
+ * through the Host's RPC door into the vendored channel pack. This paints it
+ * with a stub connection and asserts both the calls it makes and the cards it
+ * draws — a page stuck on an empty grid because the bridge was wired wrong
+ * looks exactly like a page that has no accounts.
+ */
+const channelRows = [
+  { id: 'codearts-1c6d8fce', nickname: 'work account', enabled: true, refreshable: true, expiresAt: 1790000000000 },
+  { id: 'lobsterai-adf4e80e', nickname: 'personal', enabled: false, refreshable: false }
+]
+const channelStatuses = {
+  codearts: { models: { total: 4, disabled: 1 }, accounts: { total: 2, enabled: 1 }, closed: false },
+  buddy: { models: { total: 6, disabled: 0 }, accounts: { total: 0, enabled: 0 }, closed: false },
+  lobsterai: { models: { total: 2, disabled: 2 }, accounts: { total: 1, enabled: 0 }, closed: true },
+  workbuddy: { models: { total: 3, disabled: 0 }, accounts: { total: 1, enabled: 1 }, closed: false }
+}
+
+const rpcCalls = []
+const packConnection = {
+  rpc: {
+    call: async (_space, endpoint, body) => {
+      rpcCalls.push({ endpoint, method: body.method, payload: body.payload })
+      if (body.method === 'provider.status') return { ok: true, value: { statuses: channelStatuses } }
+      if (body.method === 'account.list') {
+        return { ok: true, value: { accounts: body.payload.provider === 'codearts' ? channelRows : [] } }
+      }
+      if (body.method === 'model.list') {
+        return { ok: true, value: { models: [{ id: 'deepseek-v3', name: 'DeepSeek V3', disabled: false, isFree: true }] } }
+      }
+      if (body.method === 'account.create') return { ok: true, value: { authUrl: 'https://example.invalid/login' } }
+      return { ok: true, value: {} }
+    }
+  }
+}
+
+// Mount the real shell with a context that answers `get`, exactly the shape the
+// plugin's own ctx has for an optional service.
+const mountFreeModel = (context) => {
+  // Each mount starts from blank hook cells: a leftover from the previous one
+  // is exactly how a page ends up rendering a null Set.
+  hooked.reset()
+  rememberedTab = 'freemodel'
+  rememberedSection = 'accounts'
+  registered.sections.length = 0
+  plugin.apply(ctx)
+  const section = registered.sections[registered.sections.length - 1]
+  return () => section.component({
+    t: (key) => `settings.desktopPlatform/${key}`,
+    scope: {},
+    host: { session: null },
+    ctx: context
+  })
+}
+
+const withBridge = { get: (name) => (name === 'connection' ? packConnection : undefined) }
+rpcCalls.length = 0
+// The block above restored the inert hooks when it finished; this page needs
+// them back to have a memory, or every effect silently never runs.
+React.useState = hooked.React$.useState
+React.useEffect = hooked.React$.useEffect
+
+const packTree = await settled(mountFreeModel(withBridge))
+
+if (rpcCalls[0].endpoint !== 'channel-pack') {
+  throw new Error(`the accounts page dialled ${rpcCalls[0].endpoint}, expected the pack's own endpoint`)
+}
+if (rpcCalls[0].method !== 'provider.status') {
+  throw new Error(`the accounts page asked for ${rpcCalls[0].method} first`)
+}
+const asked = rpcCalls[0].payload.providers
+if (!Array.isArray(asked) || asked.length !== 13 || !asked.includes('codearts')) {
+  throw new Error(`the accounts page asked for the wrong providers: ${JSON.stringify(asked)}`)
+}
+const accountText = textsOf(packTree)
+for (const needle of ['CodeArts', 'LobsterAI', 'settings.desktopPlatform/accounts.state.on', 'settings.desktopPlatform/accounts.state.closed']) {
+  if (!accountText.includes(needle)) throw new Error(`the accounts page never shows ${needle}`)
+}
+// The count pills are built as one string, so the label is a substring, not a
+// text node of its own.
+if (!accountText.some((text) => text.includes('accounts.accounts') && text.includes('1/2'))) {
+  throw new Error(`the accounts page shows no account counts: ${JSON.stringify(accountText.slice(-6))}`)
+}
+console.log('accounts: 13 channels dialled as one provider.status, cards drawn with their real state')
+
+// No connection service at all: the page must say so instead of rendering an
+// empty grid that reads as "you have no accounts".
+const blindTree = await settled(mountFreeModel({ get: () => undefined }))
+if (findByText(blindTree, 'settings.desktopPlatform/accounts.noBridge') === null) {
+  throw new Error('without a connection service the page must explain itself')
+}
+console.log('accounts: no connection service → the page explains itself')
+
+
 // The inner nav is the owner's affordance, ours: eight entries, and the
 // remembered page is the one that is actually on screen.
 rememberedTab = 'freemodel'
@@ -425,7 +566,7 @@ const navPanel = findById(navTree, 'dshPlatformPanel-freemodel')
 const navList = navPanel === null ? null : findByRole(navPanel, 'tablist')
 if (navList === null) throw new Error('the FreeModel section has no nav')
 const navIds = navList.children.map((child) => child.props.id)
-const navWanted = ['upgrade', 'eac', 'aggregate', 'saver', 'routing', 'dashboard', 'logs', 'gateway']
+const navWanted = ['upgrade', 'eac', 'accounts', 'aggregate', 'saver', 'routing', 'dashboard', 'logs', 'gateway']
 if (navIds.join() !== navWanted.map((id) => `dshFmTab-${id}`).join()) {
   throw new Error(`nav ids: ${navIds}`)
 }
