@@ -1,0 +1,17 @@
+# 长期记忆
+
+- 2026-10-14 本仓库从 2 插件 3 页面合并为 1 插件 1 页面（`dsh-desktop-platform`，导航名「综合平台」），3 个页签：用量统计 / 归档历史 / 记忆系统。
+- 2026-10-14 设置导航顺序：宿主内置占 -10..20（账号/通用/模型/插件/Agent 预设），第三方 IM机器人 占 21，自制页用 `order: 900` 钉在最后。
+- 2026-10-14 pnpm 对 `file:` 依赖会复用 store 旧副本，版本号不变时 `pnpm install --force` 也不重新拷贝；`install-to-profile.ps1` 改为安装前先删 `node_modules\<name>`。
+- 2026-10-14 DSH 会话日志是 append-only（契约原文「已提交事件绝不重写」「无删除或保留接口」），没有原地撤回/改写历史的原语，只能 fork。
+- 2026-10-14 永久删除会话要走宿主 `ctx.remote.session.delete({ sessionId })`（内部依次销毁活跃 Agent、persistence.delete、registry.forgetSession）；只用 `registry.forgetSession` 是删不掉日志的。
+- 2026-10-14 归档页的删除（单个 + 批量）就是走上面这个宿主 RPC，自检见 `test/archive-delete.test.mjs`（迷你 React 挂载后真点按钮）。
+- 2026-10-14 试过按 fork 语义做「撤回重发」，用户反馈不好用，已整块删除；再有人提类似需求先问是否接受分支语义。
+- 2026-10-14 客户端模块加载器（dsh-client-modules）的 `require` 只认平台 seed 名与已注册模块 id，**没有同步相对导入**；client.js 想拆文件只能用 `require.async('./client.x.js')` 异步 chunk。
+- 2026-10-14 查宿主源码要读 `E:\ai\DSH Desktop\resources\app.asar`（自写脚本按 asar 头部 JSON 读文件即可，不用解包）；`%APPDATA%\dsh-desktop\harness\profiles\node_modules\@deepseek-ai\*` 是指向已不存在路径的失效 junction。
+- 2026-10-14 宿主 client 服务名（写进插件 `inject` 数组的就是这些字符串）：`slots`、`locale`、`configForms`、`sessions`、`uiWorkspace`、`remote`、`remote.session`；外部服务用 `ctx.inject([...], cb)` 软依赖，缺了只是功能不出现，不会拖垮整个插件。
+- 2026-10-14 改完 `dsh-plugins` 下的代码必须重跑 `install-to-profile.ps1` 再重启 DSH Desktop；服务端可用 loopback 路由自检，客户端只能靠用户看界面。
+- 2026-10-15 `ctx.slots.entries(key)` 返回的 entry 自带 `component`，可以跨插件把别人注册的设置页直接渲染进自己的页面（本仓库用它把 dsh-our-free-model 的整页挂进综合平台）；账本变化用 `getVersion` + `subscribe` 观察。
+- 2026-10-15 dsh-our-free-model 的 `/api/our-free-model/*` 有信任围栏，外部请求一律 401，页面只能在渲染进程里用同源凭据访问；它装的版本与 GitHub main 一致（2.1.0）。
+- 2026-10-15 跨插件挂载别人注册���设置页时，必须连 `close` 和 `t`（`ctx.locale.bind(entry.options.locale)`）一起给；缺 `t` 会在渲染期抛错、页签白屏。
+- 2026-10-15 slot 记录的命名空间在 `entry.locale`（与 component/inject 同级），`entry.options` 里只有 key/id/order/label/priority；读错会静默退化成回显 key。
