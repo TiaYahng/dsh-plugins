@@ -165,6 +165,7 @@ profile bundle "<name>" declares no dsh.bundle in its package.json
 
 ## 维护规范
 
+- **`exports.inject` 是服务声明，不能因为「没人用了」就删。** 宿主只在声明过的服务上放行：访问未声明的 `ctx.locale` 会在渲染进程抛 `cannot get property "locale" without inject`，整个 client bundle 加载失败，宿主判定 profile 失败并弹出「恢复 / 卸载此插件」——表现是**应用打不开**，日志里只有一行 renderer stderr（`harness.log` 的 `Failed to load plugins` 段）。`test/platform-client.test.mjs` 现在扫描源码里所有 `ctx.<name>`（`inject` / `effect` 除外），要求它们都在声明里。
 - 语义色只用 `--dsw-alias-*`，样式表里不出现硬编码色值（自检会查）。
 - 文案必须 `ctx.locale.register(NS, { zh, en })`，中英同批加，自检会比对 key 齐平。
 - 服务端可以拆子文件；**客户端不可拆**——客户端模块加载器（`dsh-client-modules`）的 `require`
