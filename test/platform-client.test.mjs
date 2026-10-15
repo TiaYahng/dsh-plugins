@@ -315,24 +315,37 @@ const AGGREGATE = {
 
 const EAC = { available: true, authorized: true, login: 'octocat', starred: true, required: false, configured: true, repo: 'acme/models', reason: null }
 
+const fetchCalls = []
 const ANSWERS = {
+  '/api/our-free-model/bench': { model: 'deepseek-chat', ok: true, totalMs: 1800, ttftMs: 420, outputTokens: 2, reasoningTokens: 0, tokensPerSecond: 38.5, sample: 'OK' },
   '/api/our-free-model/stats': STATS,
   '/api/our-free-model/providers': AGGREGATE,
-  '/api/our-free-model/eac/status': EAC
+  '/api/our-free-model/eac/status': EAC,
+  // The roster the owner probes: one model it can reach, one it cannot, and
+  // the reason the second one is in the table at all.
+  '/api/our-free-model/summary': {
+    catalog: [
+      { id: 'deepseek-chat', name: 'DeepSeek Chat', availability: 'available', detail: '', ttftMs: 420, probedAt: 1760000000000 },
+      { id: 'broken-model', name: 'Broken Model', availability: 'unavailable', detail: 'upstream refused the credential', ttftMs: undefined, probedAt: 1760000000000 }
+    ]
+  }
 }
 
 const realFetch = globalThis.fetch
-globalThis.fetch = async (url) => {
+const ownerFetchStub = async (url, options) => {
   const path = String(url)
+  fetchCalls.push({ path, method: options?.method ?? 'GET' })
   const body = ANSWERS[path]
   if (body === undefined) return { ok: true, status: 200, json: async () => ({}) }
   return { ok: true, status: 200, json: async () => body }
 }
+globalThis.fetch = ownerFetchStub
 
 /** A React whose hooks remember, so a load can be painted and then asserted. */
 function statefulHooks () {
   const cells = {}
   const queued = []
+  const cleanups = []
   let cursor = 0
   const paint = () => {
     queued.length = 0
@@ -349,9 +362,12 @@ function statefulHooks () {
         queued.push('again')
       }]
     },
-    useEffect: (run) => { queued.push(run) }
+    useEffect: (run) => { queued.push(() => {
+      const cleanup = run()
+      if (typeof cleanup === 'function') cleanups.push(cleanup)
+    }) }
   }
-  return { React$, paint, queued, reset: () => { for (const key of Object.keys(cells)) delete cells[key] } }
+  return { React$, paint, queued, cleanups, reset: () => { for (const key of Object.keys(cells)) delete cells[key] } }
 }
 
 const hooked = statefulHooks()
@@ -369,6 +385,7 @@ async function settled (mount, passes = 8) {
   mountNow = mount
   let tree = null
   for (let pass = 0; pass < passes; pass += 1) {
+    for (const cleanup of hooked.cleanups.splice(0)) cleanup()
     tree = hooked.paint()
     const work = hooked.queued.splice(0)
     for (const item of work) {
@@ -477,6 +494,7 @@ const channelStatuses = {
 }
 
 const rpcCalls = []
+let loginPolls = 0
 // The ledger the pack keeps for the channel accounts, in the shape the pack
 // actually builds it: channel → provider → account → model, with the averages
 // already divided by readTokenLedger's finalizeAverages.
@@ -525,7 +543,18 @@ const packConnection = {
       if (body.method === 'model.list') {
         return { ok: true, value: { models: [{ id: 'deepseek-v3', name: 'DeepSeek V3', disabled: false, isFree: true }] } }
       }
-      if (body.method === 'account.create') return { ok: true, value: { authUrl: 'https://example.invalid/login' } }
+      if (body.method === 'account.create') {
+        // The pack's real answer: a placeholder account and a sign-in URL. The
+        // credential only lands later, which is what login.poll watches.
+        return { ok: true, value: { accountId: 'codearts-pending', loginUrl: 'https://example.invalid/login' } }
+      }
+      if (body.method === 'login.poll') {
+        loginPolls += 1
+        return loginPolls === 1
+          ? { ok: true, value: { done: false } }
+          : { ok: true, value: { done: true, success: true, login: 'work@example.invalid' } }
+      }
+      if (body.method === 'account.test') return { ok: true, value: { ok: true, ms: 128 } }
       if (body.method === 'usage.tokenLedger') return { ok: true, value: { snapshot: packSnapshot } }
       if (body.method === 'usage.tokenLedgerHistory') return { ok: true, value: { history: packHistory, totals: ledgerRow } }
       if (body.method === 'usage.autoCheckin') {
@@ -607,6 +636,48 @@ for (const needle of ['CodeArts', 'LobsterAI', 'settings.desktopPlatform/account
 if (!accountText.some((text) => text.includes('accounts.accounts') && text.includes('1/2'))) {
   throw new Error(`the accounts page shows no account counts: ${JSON.stringify(accountText.slice(-6))}`)
 }
+const opened = []
+globalThis.window.open = (url) => { opened.push(url); return null }
+
+const mountAccounts = mountFreeModel(withBridge)
+const codeartsCard = findCard(packTree, 'CodeArts')
+if (codeartsCard === null) throw new Error('the CodeArts card is not on the page')
+const addButton = findButton(codeartsCard, 'settings.desktopPlatform/accounts.add')
+if (addButton === null) throw new Error('no add-account button on the card')
+rpcCalls.length = 0
+await addButton.props.onClick()
+// The call is made on the first tick; the window opens once the answer comes
+// back, which is a microtask later.
+await new Promise((resolve) => setTimeout(resolve, 0))
+await new Promise((resolve) => setTimeout(resolve, 0))
+if (!rpcCalls.some((call) => call.method === 'account.create')) {
+  throw new Error('the add-account button did not start a login')
+}
+if (opened.length === 0 || !opened[0].includes('example.invalid')) {
+  throw new Error('the sign-in page was never opened: ' + JSON.stringify(opened))
+}
+
+// The accounts fold has to be open before the row buttons exist. The harness
+// does not re-render on a state change by itself, so paint again.
+const foldButton = findButton(codeartsCard, 'settings.desktopPlatform/accounts.foldAccounts')
+if (foldButton === null) throw new Error('no accounts fold on the card')
+rpcCalls.length = 0
+await foldButton.props.onClick()
+await settled(mountAccounts)
+if (!rpcCalls.some((call) => call.method === 'account.list')) {
+  throw new Error('opening the accounts fold did not read the accounts')
+}
+const openTree = await settled(mountAccounts)
+const testButton = findButton(openTree, 'settings.desktopPlatform/accounts.test')
+if (testButton === null) throw new Error('no connection test on any account row')
+rpcCalls.length = 0
+await testButton.props.onClick()
+await new Promise((resolve) => setTimeout(resolve, 0))
+if (!rpcCalls.some((call) => call.method === 'account.test')) {
+  throw new Error('the test button did not test the account')
+}
+console.log('accounts: sign-in opens the browser, the connection test is reachable')
+
 console.log('accounts: 13 channels dialled as one provider.status, cards drawn with their real state')
 
 // No connection service at all: the page must say so instead of rendering an
@@ -664,6 +735,37 @@ if (findByText(logTree2, 'settings.desktopPlatform/log.lanePack') === null) {
 }
 console.log('call log: both lanes offered, the channel one read from the pack')
 
+
+// The availability table and the bench answer "can this model actually be
+// called, and how fast". The bench is a real generation, so it goes through
+// the owner's own route rather than the pack.
+rememberedTab = 'freemodel'
+rememberedSection = 'routing'
+registered.sections.length = 0
+plugin.apply(ctx)
+const routeMount = registered.sections[registered.sections.length - 1]
+hooked.reset()
+globalThis.fetch = ownerFetchStub
+const routeTree = await settled(() => routeMount.component({
+  t: (key) => `settings.desktopPlatform/${key}`,
+  scope: {},
+  host: { session: null },
+  ctx: withBridge
+}))
+if (findByText(routeTree, 'settings.desktopPlatform/check.title') === null) {
+  throw new Error('the routing page has no model availability table')
+}
+const benchButton = findButton(routeTree, 'settings.desktopPlatform/check.bench')
+if (benchButton === null) throw new Error('no bench button on any model')
+fetchCalls.length = 0
+await benchButton.props.onClick()
+await new Promise((resolve) => setTimeout(resolve, 0))
+await new Promise((resolve) => setTimeout(resolve, 0))
+if (!fetchCalls.some((call) => call.method === 'POST' && call.path.endsWith('/bench'))) {
+  throw new Error('the bench button did not run a generation: ' + JSON.stringify(fetchCalls))
+}
+console.log('routing: model availability table present, bench really posts to /bench')
+
 // The inner nav is the owner's affordance, ours: eight entries, and the
 // remembered page is the one that is actually on screen.
 rememberedTab = 'freemodel'
@@ -715,6 +817,33 @@ function findByText (node, needle) {
   })
   return hit
 }
+function findCard (node, name) {
+  let hit = null
+  walkTree(node, (candidate) => {
+    if (hit !== null) return
+    const className = String(candidate.props?.className ?? '')
+    if (className.split(' ').includes('dshFmChan') === false) return
+    // The name sits inside the card's header, not directly on the card.
+    if (textsOf(candidate).includes(name)) hit = candidate
+  })
+  return hit
+}
+/**
+ * A button whose label starts with a copy key. Substring, not equality: the
+ * fold buttons read "账号 (2)" — the key plus a count — and the key is what
+ * the test means.
+ */
+function findButton (node, label) {
+  let hit = null
+  walkTree(node, (candidate) => {
+    if (hit !== null) return
+    if (typeof candidate.props?.onClick !== 'function') return
+    for (const child of candidate.children) {
+      if (typeof child === 'string' && child.startsWith(label)) { hit = candidate; return }
+    }
+  })
+  return hit
+}
 function findByRole (node, role) {
   let hit = null
   walkTree(node, (candidate) => { if (hit === null && candidate.props.role === role) hit = candidate })
@@ -752,4 +881,5 @@ function walkTree (node, visit) {
   walkTree(node.children, visit)
 }
 
+for (const cleanup of hooked.cleanups.splice(0)) cleanup()
 console.log('OK')

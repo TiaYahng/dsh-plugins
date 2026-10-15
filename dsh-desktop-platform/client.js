@@ -112,6 +112,17 @@ window.__ModuleLoader__.load({
       "accounts.autoCheckinHint": 'The plugin claims once a day, for every channel that has a check-in, without spending one of your requests.',
       "accounts.autoCheckinLast": 'Last {at} · {result}',
       "accounts.creditBadge": 'Credits',
+      "accounts.test": "Test",
+      "accounts.testOk": "Connection healthy ({ms} ms)",
+      "accounts.testFailed": "Test failed: {reason}",
+      "accounts.loginStep1": "The provider's sign-in page is open in your browser — authorise there.",
+      "accounts.loginStep2": "This page checks every three seconds and finishes on its own (ten minutes at most).",
+      "accounts.loginOpen": "Open the sign-in page",
+      "accounts.loginCancel": "Cancel",
+      "accounts.loginWaiting": "Waiting for the provider to redirect back…",
+      "accounts.loginDone": "Signed in: {login}",
+      "accounts.loginFailed": "Sign-in did not finish: {reason}",
+      "accounts.loginExpired": "The sign-in link expired — start another one.",
       "lane.title": "Channel usage (the pack's own ledger)",
       "lane.intro": "The table above counts the plugin's own free lane only. The thirteen channel accounts keep a second ledger inside the pack, persisted for ninety days, with the recent calls in memory beside it. The two never overlap.",
       "lane.loading": "Reading the channel ledger…",
@@ -408,6 +419,23 @@ window.__ModuleLoader__.load({
       "log.columnResult": 'Result',
       "log.columnDecode": 'Decode',
       "log.columnNotes": 'Notes',
+      "check.title": "Model availability",
+      "check.intro": "The plugin probes its own roster, and the verdict and time-to-first-token are right here. \"Bench\" is a real generation (the model is asked to reply OK), because a slow model is exactly what you are measuring. A chain is only worth anything once its first link is known to be alive.",
+      "check.columnModel": "Model",
+      "check.columnState": "State",
+      "check.columnTtft": "TTFT",
+      "check.columnSpeed": "Measured",
+      "check.columnActions": "Actions",
+      "check.state.available": "available",
+      "check.state.unavailable": "unavailable",
+      "check.state.unknown": "not probed",
+      "check.inChain": "in a chain",
+      "check.bench": "Bench",
+      "check.benching": "Benching…",
+      "check.benchFailed": "bench failed",
+      "check.reprobe": "Probe again",
+      "check.reprobing": "Probing…",
+      "aggregate.testCard": "Test",
       "log.ok": 'ok',
       "log.failed": 'failed',
       "log.truncated": 'cut short',
@@ -472,6 +500,17 @@ window.__ModuleLoader__.load({
       "accounts.autoCheckinHint": '插件自己在每天的固定时刻为所有支持签到的渠道领一次，不占用你的请求。',
       "accounts.autoCheckinLast": '上次 {at} · {result}',
       "accounts.creditBadge": '积分',
+      "accounts.test": "测试连接",
+      "accounts.testOk": "连接正常（{ms} ms）",
+      "accounts.testFailed": "连接失败：{reason}",
+      "accounts.loginStep1": "浏览器已打开该服务商的登录页，在那里完成授权。",
+      "accounts.loginStep2": "本页每 3 秒查一次，凭据一到就自动收尾（最多 10 分钟）。",
+      "accounts.loginOpen": "打开登录页",
+      "accounts.loginCancel": "取消",
+      "accounts.loginWaiting": "等待对方重定向回来…",
+      "accounts.loginDone": "登录完成：{login}",
+      "accounts.loginFailed": "登录没有完成：{reason}",
+      "accounts.loginExpired": "登录链接已过期，重新点一次「添加账号」。",
       "lane.title": "渠道用量（channel pack 账本）",
       "lane.intro": "上面那张表只数插件自己的免费线路。十三条渠道账号的 token 记在 channel pack 的另一本账里，落盘保留 90 天，进程内另有最近若干条逐次记录。两者互不重叠。",
       "lane.loading": "正在读取渠道账本…",
@@ -768,6 +807,23 @@ window.__ModuleLoader__.load({
       "log.columnResult": '结果',
       "log.columnDecode": '解码耗时',
       "log.columnNotes": '备注',
+      "check.title": "模型可用性",
+      "check.intro": "插件对自己的线路逐个探测过，结论和首字延迟就在这里；「测速」是真的发一次生成（让模型回一个 OK），慢的模型本来就是要测的。链路的价值全在第一条会死，所以先确认它活着。",
+      "check.columnModel": "模型",
+      "check.columnState": "状态",
+      "check.columnTtft": "首字延迟",
+      "check.columnSpeed": "实测速度",
+      "check.columnActions": "操作",
+      "check.state.available": "可用",
+      "check.state.unavailable": "不可用",
+      "check.state.unknown": "未探测",
+      "check.inChain": "链中",
+      "check.bench": "测速",
+      "check.benching": "测速中…",
+      "check.benchFailed": "测速失败",
+      "check.reprobe": "重新探测",
+      "check.reprobing": "探测中…",
+      "aggregate.testCard": "测试",
       "log.ok": '成功',
       "log.failed": '失败',
       "log.truncated": '中途截断',
@@ -904,6 +960,8 @@ window.__ModuleLoader__.load({
 .dshFmSkeleton{border-radius:11px;background:linear-gradient(90deg,color-mix(in srgb,var(--dsw-alias-bg-layer-1) 70%,transparent),color-mix(in srgb,var(--dsw-alias-bg-layer-2) 70%,transparent),color-mix(in srgb,var(--dsw-alias-bg-layer-1) 70%,transparent));background-size:220% 100%;animation:dshFmShimmer 1.5s ease-in-out infinite}
 @keyframes dshFmShimmer{from{background-position:120% 0}to{background-position:-20% 0}}
 .dshFmKpi{display:flex;flex-direction:column;gap:3px;padding:13px 15px;border-radius:15px}
+.dshFmStep{display:flex;align-items:baseline;gap:8px;margin:0;font-size:11.5px;line-height:17px;color:var(--dsw-alias-label-secondary)}
+.dshFmStep b{display:grid;place-items:center;width:16px;height:16px;border-radius:50%;flex:none;font-size:10px;color:var(--dsw-alias-label-primary);background:color-mix(in srgb,var(--dsw-alias-state-business-primary) 26%,transparent)}
 .dshFmStack{display:flex;flex-direction:column;gap:10px}
 .dshFmSeg{display:inline-flex;padding:3px;border-radius:11px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l1) 80%,transparent);background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 62%,transparent)}
 .dshFmSegBtn{font:inherit;font-size:11.5px;font-weight:600;padding:4px 11px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;white-space:nowrap}
@@ -1894,13 +1952,65 @@ window.__ModuleLoader__.load({
         const fresh = await bridge('credits.balances', { provider: channel.id }, 90_000)
         setCredits(fresh?.accounts ?? [])
       })
-      const login2 = async () => load('login', async () => {
-        if (bridge === null) throw new Error(t('accounts.noBridge'))
-        // The pack's login is two-phase: `account.create` hands back a URL to
-        // open, and the account only lands once the provider has redirected.
-        const value = await bridge('account.create', { provider: channel.id }, 90_000)
-        setLogin(value?.authUrl ?? value?.url ?? '')
-      })
+      const startLogin = async () => {
+        setBusy('login')
+        setNote('')
+        try {
+          if (bridge === null) throw new Error(t('accounts.noBridge'))
+          const value = await bridge('account.create', { provider: channel.id }, 90_000)
+          const accountId = value?.accountId
+          const url = typeof value?.loginUrl === 'string' ? value.loginUrl : ''
+          if (typeof accountId !== 'string' || accountId === '') throw new Error('bad-answer')
+          // Raise the window the moment the answer is in. Waiting for the
+          // modal to render first is what gets the popup blocked.
+          if (url !== '') {
+            try { window.open(url, '_blank', 'noopener') } catch { /* the modal offers the link too */ }
+          }
+          setLogin({ accountId, url, startedAt: Date.now() })
+          setOpen('accounts')
+        } catch (failure) {
+          setNote(messageOf(failure))
+          onError(channel, failure)
+        } finally {
+          setBusy('')
+        }
+      }
+
+      // Watch the placeholder until its credential lands. Ten minutes is the
+      // window the pack keeps a pending login link alive for.
+      React.useEffect(() => {
+        if (login === null || bridge === null) return undefined
+        let alive = true
+        const timer = setInterval(() => {
+          if (Date.now() - login.startedAt > 10 * 60_000) {
+            if (alive) {
+              setLogin(null)
+              setNote(t('accounts.loginExpired'))
+            }
+            return
+          }
+          bridge('login.poll', { accountId: login.accountId, provider: channel.id })
+            .then((value) => {
+              if (!alive) return
+              if (value?.done !== true) {
+                if (typeof value?.error === 'string' && value.error !== '') {
+                  setLogin(null)
+                  setNote(t('accounts.loginFailed', { reason: value.error }))
+                }
+                return
+              }
+              setLogin(null)
+              if (value.success === false) {
+                setNote(t('accounts.loginFailed', { reason: value.error ?? '—' }))
+                return
+              }
+              setNote(t('accounts.loginDone', { login: value.login ?? '' }))
+              void onChanged()
+            })
+            .catch(() => { /* the link may still complete; keep watching */ })
+        }, 3000)
+        return () => { alive = false; clearInterval(timer) }
+      }, [login, bridge, channel.id])
       const accountRows = open !== 'accounts'
         ? null
         : rows === null
@@ -1918,6 +2028,16 @@ window.__ModuleLoader__.load({
                 capability !== undefined && credits !== null && React.createElement('span', { className: 'dshFmCredit' },
                   balanceText((credits ?? []).find((entry) => entry.accountId === account.id), capability, t)),
                 React.createElement('div', { className: 'dshFmAcctActs' },
+                  React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => {
+                    setBusy('test')
+                    setNote('')
+                    bridge('account.test', { accountId: account.id }, 90_000)
+                      .then((value) => setNote(value?.ok === false
+                        ? t('accounts.testFailed', { reason: value?.error ?? '—' })
+                        : t('accounts.testOk', { ms: value?.ms ?? value?.latencyMs ?? '—' })))
+                      .catch((failure) => setNote(messageOf(failure)))
+                      .finally(() => setBusy(''))
+                  } }, busy === 'test' ? t('accounts.working') : t('accounts.test')),
                   React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void call('refresh', 'account.refresh', { accountId: account.id }, 90_000).then(() => { setNote(t('accounts.refreshed')) }) } }, busy === 'refresh' ? t('accounts.working') : t('accounts.refresh')),
                   React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void call('toggle', 'account.update', { accountId: account.id, patch: { enabled: account.enabled === false } }) } }, account.enabled === false ? t('accounts.enable') : t('accounts.disable')),
                   React.createElement('button', { className: 'dshPlatformButton dshPlatformDanger', type: 'button', disabled: busy !== '', onClick: () => { void call('delete', 'account.delete', { accountId: account.id }) } }, t('accounts.remove'))))
@@ -1961,12 +2081,17 @@ window.__ModuleLoader__.load({
           React.createElement(Pill, null, `${t('accounts.models')} ${catalogue.total ?? 0}`),
           (catalogue.disabled ?? 0) > 0 && React.createElement(Pill, { tone: 'warn' }, `${t('accounts.hidden')} ${catalogue.disabled}`)),
         note !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, note),
-        login !== '' && React.createElement('div', { className: 'dshFmLogin' },
-          React.createElement('p', { className: 'dshPlatformNote' }, t('accounts.loginHint')),
-          React.createElement('code', { className: 'dshPlatformCode' }, login)),
+        login !== null && React.createElement('div', { className: 'dshFmLogin' },
+          React.createElement('p', { className: 'dshFmStep' }, React.createElement('b', null, '1'), t('accounts.loginStep1')),
+          React.createElement('p', { className: 'dshFmStep' }, React.createElement('b', null, '2'), t('accounts.loginStep2')),
+          login.url !== '' && React.createElement('code', { className: 'dshPlatformCode' }, login.url),
+          React.createElement('p', { className: 'dshPlatformNote' }, t('accounts.loginWaiting')),
+          React.createElement('div', { className: 'dshFmBar' },
+            login.url !== '' && React.createElement('a', { className: 'dshPlatformButton', href: login.url, target: '_blank', rel: 'noreferrer noopener' }, t('accounts.loginOpen')),
+            React.createElement('button', { className: 'dshPlatformButton', type: 'button', onClick: () => setLogin(null) }, t('accounts.loginCancel')))),
         React.createElement('div', { className: 'dshFmBar' },
           React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void call('provider', 'provider.setEnabled', { provider: channel.id, enabled: closed || !connected }) } }, closed || !connected ? t('accounts.openAll') : t('accounts.closeAll')),
-          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void login2() } }, busy === 'login' ? t('accounts.working') : t('accounts.add')),
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void startLogin() } }, busy === 'login' ? t('accounts.working') : t('accounts.add')),
           React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void fold('accounts') } }, `${t('accounts.foldAccounts')}${accounts.total === undefined ? '' : ` (${accounts.total})`}`),
           React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void fold('models') } }, `${t('accounts.foldModels')}${catalogue.total === undefined ? '' : ` (${catalogue.total})`}`),
           capability !== undefined && React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void fold('credits') } }, t('accounts.foldCredits')),
@@ -2420,6 +2545,82 @@ window.__ModuleLoader__.load({
           error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error }))))
     }
 
+    /**
+     * Which models can actually be called, and how fast.
+     *
+     * The owner probes its own roster and reports a verdict per model; a bench
+     * is a real generation ("Reply with exactly: OK"), so it costs one tiny
+     * call and answers the only question a chain cannot: is the first link
+     * alive. Long by nature — a slow model is the point of measuring it.
+     */
+    function ModelCheck ({ t, state }) {
+      const summary = state.data === null ? null : state.data[1] ?? {}
+      const combos = state.data === null ? null : state.data[0] ?? {}
+      const [benches, setBenches] = React.useState({})
+      const [busy, setBusy] = React.useState('')
+      const [error, setError] = React.useState('')
+      const rows = summary === null ? [] : (summary.catalog ?? []).filter((entry) => entry.availability !== undefined)
+      const usable = combos === null ? new Set() : new Set((combos.usable ?? []).map((entry) => entry.id))
+      const bench = async (model) => {
+        setBusy(model)
+        setError('')
+        try {
+          const result = await ownerPost('/bench', { model }, 240_000)
+          setBenches((current) => ({ ...current, [model]: result }))
+        } catch (failure) {
+          setError(messageOf(failure))
+        } finally {
+          setBusy('')
+        }
+      }
+      const reprobe = async () => {
+        setBusy('reprobe')
+        setError('')
+        try {
+          await ownerPost('/reprobe', {}, 120_000)
+          state.reload()
+        } catch (failure) {
+          setError(messageOf(failure))
+        } finally {
+          setBusy('')
+        }
+      }
+      if (rows.length === 0) return null
+      const table = React.createElement('div', { className: 'dshPlatformTableWrap' },
+        React.createElement('table', { className: 'dshPlatformTable' },
+          React.createElement('thead', null, React.createElement('tr', null,
+            React.createElement('th', { scope: 'col' }, t('check.columnModel')),
+            React.createElement('th', { scope: 'col' }, t('check.columnState')),
+            React.createElement('th', { scope: 'col' }, t('check.columnTtft')),
+            React.createElement('th', { scope: 'col' }, t('check.columnSpeed')),
+            React.createElement('th', { scope: 'col' }, t('check.columnActions')))),
+          React.createElement('tbody', null, rows.map((entry) => {
+            const result = benches[entry.id]
+            const tone = entry.availability === 'available' ? 'ok' : entry.availability === 'unavailable' ? 'danger' : 'off'
+            return React.createElement('tr', { key: entry.id },
+              React.createElement('td', null, entry.name ?? entry.id),
+              React.createElement('td', null,
+                React.createElement(Pill, { tone }, t(`check.state.${entry.availability}`)),
+                typeof entry.detail === 'string' && entry.detail !== '' && React.createElement('div', { className: 'dshFmAcctMeta' }, entry.detail)),
+              React.createElement('td', null, typeof entry.ttftMs === 'number' ? `${formatNumber(entry.ttftMs)} ms` : '—'),
+              React.createElement('td', null, result === undefined
+                ? '—'
+                : result?.ok === false
+                  ? React.createElement(Pill, { tone: 'danger' }, t('check.benchFailed'))
+                  : `${result.tokensPerSecond ?? '—'} ${t('dash.columnTps')}`),
+              React.createElement('td', null,
+                React.createElement('div', { className: 'dshFmBar' },
+                  usable.has(entry.id) && React.createElement(Pill, { tone: 'ok' }, t('check.inChain')),
+                  React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void bench(entry.id) } }, busy === entry.id ? t('check.benching') : t('check.bench')))))
+          }))))
+      return React.createElement(Card, { title: t('check.title') },
+        React.createElement('p', { className: 'dshPlatformIntro' }, t('check.intro')),
+        error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error })),
+        table,
+        React.createElement('div', { className: 'dshFmBar' },
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void reprobe() } }, busy === 'reprobe' ? t('check.reprobing') : t('check.reprobe'))))
+    }
+
     /* ── 路由（降级链）────────────────────────────────────────────────────── */
     function RoutingPage ({ t }) {
       const state = useOwner(['/combos', '/summary'])
@@ -2483,6 +2684,7 @@ window.__ModuleLoader__.load({
         React.createElement('div', { className: 'dshPlatform' },
           React.createElement('p', { className: 'dshPlatformIntro' }, t('routing.intro')),
           editor,
+          state.data !== null && React.createElement(ModelCheck, { t, state }),
           state.data !== null && React.createElement(Card, { title: t('routing.chains', { count: chains.length }) },
             React.createElement('div', { className: 'dshPlatformBar' },
               React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setEditing({ id: '', name: '', models: [], strategy: 'fallback', stickyLimit: 1, enabled: true }) }, t('routing.newChain')),
@@ -2694,6 +2896,17 @@ window.__ModuleLoader__.load({
               state2?.lastTest?.ok === true && React.createElement(Pill, { tone: 'ok' }, t('aggregate.verified'))),
             React.createElement('p', { className: 'dshPlatformMeta' }, `${provider.id} · ${provider.format ?? ''}`),
             React.createElement('div', { className: 'dshPlatformBar' },
+              React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '' || state2 === undefined, onClick: () => {
+                setBusy('test')
+                setNote('')
+                ownerPost('/providers/test', { providerId: provider.id }, 60_000)
+                  .then((result) => {
+                    setNote(t(result?.ok === true ? 'aggregate.testOk' : 'aggregate.testFailed', { status: result?.status ?? 0 }))
+                    state.reload()
+                  })
+                  .catch((failure) => setNote(messageOf(failure)))
+                  .finally(() => setBusy(''))
+              } }, busy === 'test' ? t('aggregate.working') : t('aggregate.testCard')),
               React.createElement('button', { className: 'dshPlatformButton', type: 'button', onClick: () => { setFound(null); setEditing({ providerId: provider.id, name: provider.name ?? provider.id, enabled: on, baseUrl: state2?.baseUrl ?? provider.baseUrl ?? '', apiKey: '', models: (state2?.models ?? []).join(', ') }) } }, t('aggregate.configure'))))
         }))
       return React.createElement(OwnerShell, { t, state },
