@@ -7,8 +7,13 @@
 
 ## 0. 一句话现状
 
-自制插件（1 个插件 / 1 个设置页 / 3 个页签）已从即将废弃的仓库 `E:\ai\aianymore` 移到本目录
-`E:\ai\dsh-plugins\`，并已在 DSH Desktop 0.11.1 上实测可用。**接下来要做的是重构。**
+自制插件（2 个）已从即将废弃的仓库 `E:\ai\aianymore` 移到本目录
+`E:\ai\dsh-plugins\`，并已在 `E:\ai\DeepSeek Harness`（harness `0.2.0-rc.2`）上实测可用：
+
+1. **`dsh-desktop-platform`** —— 综合平台，1 个设置页 / 4 个页签。
+2. **`dsh-localcoding-mcp`** —— 把 `LocalCodingMCP_v0_3` 接进宿主，三个方向：
+   40 个 MCP 工具入宿主工具表、任务反向委派给 `codex.exe`、
+   出站隧道让网页版 ChatGPT 调本机工具。
 
 ---
 
@@ -30,6 +35,20 @@
 ---
 
 ## 2. 插件与界面的对应关系
+
+**2 个插件 → 2 个设置页。**
+
+```
+dsh-localcoding-mcp
+  └─ settings.section  id: 'localcoding-mcp'  order: 950  label: t('nav')
+       ├── card.server   服务器状态（启停 / 端口 / 工作区 / 版本）
+       ├── card.tools    工具清单（41 个 lcm_*）
+       ├── card.codex    Codex 可用性 + 模型入口探活 + 注册 / 注销 MCP 服务器
+       ├── card.probe    握手自检（会话 / capabilities / instructions）
+       ├── card.tunnel   网页版 ChatGPT 隧道舰队（按账号启停 / /readyz / doctor）
+       ├── card.browser  可选的浏览器面（Playwright MCP）
+       └── card.logs     实时日志
+```
 
 **1 个插件 → 1 个设置页 → 11 个页签。** 2026-10-14 由原来的「2 插件 / 3 页面」合并而来；
 2026-10-15 加入 FreeModel 的 8 个自建页（原先是挂载对方的整页，因无法隐藏其中某一页而重做）。
@@ -80,7 +99,25 @@ E:\ai\dsh-plugins\
 │   ├── server\memory.js       MEMORY.md、约定块、交接摘要
 │   ├── package.json
 │   └── cordis.patch.yml
+├── dsh-localcoding-mcp\
+│   ├── client.js              客户端：MCP 桥接设置页（单文件，见 7.4）
+│   ├── index.js               服务端入口：Config / 路由挂载 / 桥接 effect
+│   ├── server\mcp-client.js   streamable-HTTP 的 MCP 客户端（POST-only，不开 GET 长连接）
+│   ├── server\process.js      LocalCodingMCP.exe 生命周期：端口挑选 / 认领 / spawn / health / stop
+│   ├── server\bridge.js       MCP 工具表 → 宿主 tools.register 的 ToolDefinition（lcm_ 前缀）
+│   ├── server\codex.js        反向：lcm_codex_task 委派 codex.exe + codex mcp add/register + 中转入口探活
+│   ├── server\tunnel.js       网页版方向：出站隧道舰队（DPAPI 解密 / profile 生成 / /readyz / doctor）
+│   ├── server\browser.js      可选的 Playwright MCP 浏览器面（令牌从用户级注册表读）
+│   ├── server\http.js         设置页用的 loopback 路由
+│   ├── package.json
+│   └── cordis.patch.yml
 ├── test\platform-client.test.mjs   客户端注册契约自检（零依赖）
+├── test\localcoding-client.test.mjs
+├── test\localcoding-server.test.mjs  打真实 MCP 服务器
+├── test\localcoding-process.test.mjs 端口 / spawn / stop / codex 路径
+├── test\localcoding-tunnel.test.mjs 账号解析 / 密钥变量名 / 代理探测 / DPAPI / profile 内容校验
+├── test\localcoding-plugin.test.mjs  进程内跑完整 apply()，默认加载 profile 里那份部署副本
+├── tools\asar.mjs                    asar 读取器（list / read / grep）
 ├── install-to-profile.ps1            安装与更新脚本（已实测通过）
 ├── README.md                         使用说明、来源、踩坑记录
 └── CONTEXT.md                        本文
@@ -351,10 +388,15 @@ npm 最新 `0.1.5-rc.3` 的 peer 要求宿主 `0.1.5-rc.3`，本机是 `0.2.0-rc
 | `@michengai/dsh-codex-ui` | 1.1.37 | 第三方 |
 | `@xmanrui/dsh-im` | 4.39.0 | 第三方 |
 | **`dsh-desktop-platform`** | 0.1.0 | **自制** |
+| **`dsh-localcoding-mcp`** | 0.1.0 | **自制** |
 
 第三方插件全部是精确版本 pin（不是 `^`），所以 `pnpm update` 不会动它们；
 市场页的更新检测走的是「已装版本 vs 目录 latest」，与 pin 无关。
 自制插件是 `file:` 依赖，`dsh.profile.bundles` 里与第三方混在同一个数组里。
+
+> 这张表原本列的是 `%APPDATA%\dsh-desktop\harness\profiles\web`。
+> **实际在跑的是 `~/.dsh/profiles/desktop`**（`E:\ai\DeepSeek Harness`），
+> 它的第三方插件清单略有不同（多 `@michengai/dsh-skills-manager`、`@deepseek-ai/dsh-experimental-*` 等）。
 
 ---
 
@@ -466,3 +508,76 @@ React.createElement(entry.component, { close: () => {}, t: ctx.locale.bind(entry
   loading / absent / error 三态。
 - 长任务单独给超时：`/update/check` 60 s、`/update/apply` 600 s（`AbortSignal.timeout`）。
 - Key 默认打码，点「显示」才明文；轮换走它自己的 `/forward/rotate`、`/forward/lan/rotate`。
+
+---
+
+## 16. `dsh-localcoding-mcp`：宿主没有 MCP 服务，接缝只有 `tools.register`
+
+宿主服务目录里**没有 `mcp`、也没有 `codex`**。`cordis_inspect_query` 的
+`provider:'Service', method:'listService'` 列出来的是：
+`sessionPersistence, workspaceRegistry, webServer, settings, slots, locale, configForms,
+remote, remote.session, uiWorkspace, sessions, commands, mcpResources, llm, tools`。
+
+`mcpResources.register(server, {request})` 只覆盖 MCP 的 **resources**
+（`resources/list` / `resources/templates/list` / `resources/read`），**不管 tools**。
+所以接 MCP 工具的唯一入口是 `ctx.tools.register`。
+
+`ToolDefinition` 的确切形状（`ToolSchema` + `output` + `execute`）：
+
+```ts
+{
+  name: string, description: string, parameters: Record<string, unknown>,
+  output: { schema: JsonSchemaNode, render(args, value): ContentBlock[], presentationMeta? },
+  execute(args, exec: ToolRunContext): Promise<unknown>,
+  timeoutMs?, isConcurrencySafe?, deferLoading?,
+  projectContent?, finalizeContent?, presentCall?, presentResult?
+}
+```
+
+- **`execute` 返回裸值**：宿主自己 `validateJsonSchemaValue(tool.output.schema, value)`
+  再调 `output.render(args, value)`。返回 `{isError:true}` 是错的，**失败要 throw**，
+  宿主会转成 `Error: <message>` 的 isError 结果。
+- `exec: ToolRunContext` 带 `callId/rootCallId/name/arguments/agent?/parent?/signal:AbortSignal/token`
+  外加 `deferContext(UserMessage)` 与 `concludeTurn()`。
+- **Schema 只支持子集**：`type/oneOf/properties/required/additionalProperties/items/enum/const`
+  + 注解 `description/title/default/examples`。多一个 key 就
+  `unsupported JSON schema: <key> is not a supported keyword`。
+  `additionalProperties` 必须 boolean；`required` 每项必须在 `properties` 里；`run_code` 是保留名。
+- `register` 返回一个 `() => void` 反注册函数；同一层内重名会 FAIL。
+
+细节与协议坑见 `docs/ENGINEERING.md` 的「本地编码 MCP」一节。
+
+---
+
+## 17. 网页版 ChatGPT 方向：出站隧道，不是入站端口
+
+`chatgpt.com` 的连接器在浏览器里，够不到 `127.0.0.1`。**不要去做内网穿透**——
+`mcp-accounts\tunnel-client.exe` 是 OpenAI 官方的出站守护进程，它主动连
+`https://api.openai.com`，因此不需要任何入站端口。这也是唯一官方支持的接法。
+
+每个 ChatGPT 账号一个子进程。账号配置在 `mcp-accounts\config\accounts.json`，
+三个账号的 `permissions` 都是 `[read,write,build,command]`。
+
+**密钥纪律**（这块一旦泄漏就是控制面凭据泄漏）：
+
+- `tunnel.controlPlaneKey` 是 DPAPI 加密串，只在内存里解开，
+  经独立环境变量 `LCM_CP_KEY_<ID_UPPER_SNAKE>` 交给子进程；
+  `readAccounts()` 不把它带出配置读取层，`describe()` 只报 `keyConfigured`。
+- 自检会扫全部 JSON 与 describe 输出，确保没有 `env:` 引用或密钥形状的字符串泄漏。
+
+**本地检查看不出来的两件事**：
+
+1. `/readyz` 返 200 只证明进程活着（假密钥也 200）。真正验收是去
+   `chatgpt.com/#settings/Connectors` 选中隧道后发一次真实工具调用。
+2. `organizationId` 为空会得到 `403 tunnel_active_organization_required`，
+   日志和 doctor 都看不出原因。本机三个账号的 `organizationId` **目前都是空的**，
+   隧道 ID 也没在 `platform.openai.com/settings/organization/tunnels` 复核过，
+   所以这条链路从未真正建通过。
+
+**代理**：`NO_PROXY` 只对来自环境变量的代理生效，`--control-plane.http-proxy` 忽略它；
+用显式 control-plane 代理时必须清掉 `http_proxy`/`HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`
+的全部大小写变体（PS 5.1 的 `Start-Process` 用大小写不敏感的哈希表，
+只留 `http_proxy`+`HTTP_PROXY` 会直接抛「已添加项。字典中的关键字…」）。
+
+**Playwright MCP 要用 `localhost` 而非 `127.0.0.1`**（按 `--allowed-hosts` 校验 Host 头），
+且扩展令牌只在用户级注册表里，`reg query HKCU\Environment /v PLAYWRIGHT_MCP_EXTENSION_TOKEN` 才读得到。

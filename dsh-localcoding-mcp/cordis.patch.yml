@@ -1,0 +1,9 @@
+# Profile bundle mount for dsh-localcoding-mcp.
+#
+# Same shape as dsh-desktop-platform: the DSH Desktop build carries no
+# dsh-desktop-custom-plugins host plugin, so the plugin is installed as a
+# profile bundle and this row is what mounts it. The id also keys the Settings
+# section, so it must stay equal to the plugin's `name`.
+- insert:
+    - id: dsh-localcoding-mcp
+      name: dsh-localcoding-mcp

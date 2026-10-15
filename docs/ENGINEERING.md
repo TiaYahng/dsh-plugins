@@ -245,7 +245,8 @@ $env:LCM_URL = 'http://127.0.0.1:3011/mcp'; node .\test\localcoding-server.test.
 
 ## 本地编码 MCP（`dsh-localcoding-mcp`）
 
-把 `E:\ai\aiassistant\plugins\LocalCodingMCP_v0_3` 的 .NET 8 MCP 服务器接进宿主，双向。
+把 `E:\ai\aiassistant\plugins\LocalCodingMCP_v0_3` 的 .NET 8 MCP 服务器接进宿主，三个方向：
+本地工具入表、任务出给 Codex、隧道打通网页版 ChatGPT。
 
 ### 分层
 
@@ -254,7 +255,9 @@ $env:LCM_URL = 'http://127.0.0.1:3011/mcp'; node .\test\localcoding-server.test.
 | `server/mcp-client.js` | streamable-HTTP 的 MCP 客户端（`McpHttpClient`）：initialize / tools/list / tools/call |
 | `server/process.js` | `LocalCodingMCP.exe` 的生命周期：端口挑选、认领已在跑的服务、spawn、health、stop |
 | `server/bridge.js` | 把 MCP 工具表翻译成宿主 `tools.register` 的 `ToolDefinition` |
-| `server/codex.js` | 反向：`lcm_codex_task` 委派给 `codex.exe`，外加 `codex mcp add/register` |
+| `server/codex.js` | 反向：`lcm_codex_task` 委派给 `codex.exe`，外加 `codex mcp add/register` 与中转入口探活 |
+| `server/tunnel.js` | 网页版方向：按账号起一个 `tunnel-client.exe`（出站隧道舰队） |
+| `server/browser.js` | 可选的 Playwright MCP 浏览器面，走同一个连接器 |
 | `server/http.js` | 设置页用的 loopback 路由 |
 | `client.js` | 设置页（前端必须单文件，见上文） |
 
@@ -301,11 +304,67 @@ MCP 的 `read_file` / `write_file` / `search_code` / `apply_patch` 与宿主原�
 ### 未登录的 Codex 会静默挂死
 
 `codex exec` 在没有账号时既不输出也不退出（实测 120 秒无任何输出）。
-所以 `buildCodexToolDefinition` 在跑之前先做一次 `codex login status` 预检
-（60 秒缓存一次），失败就抛
-`codex cannot run: codex is installed but not logged in — run \`codex login\``，
+`buildCodexToolDefinition` 在跑之前先探一次中转入口（60 秒缓存一次），
+不可达就抛 `codex cannot reach its model endpoint …: fetch failed`，
 而不是让调用方等到超时。
-（预检失败本身不拦截——`probeCodex(...).catch(() => undefined)`——以免探测本身出故障时挡住已登录的 Codex。）
+
+（这条判据换过一次。本机 Codex 走第三方中转：`~/.codex/config.toml` 里是
+`model_provider="custom"` + `base_url` + `experimental_bearer_token`、**没有 auth.json**，
+所以 `codex login status` 恒报 Not logged in —— 它只反映 OpenAI 账号登录，
+拿它当就绪判据会误报。真正要探的是 `baseUrl` 能不能连通：
+未带凭据 GET 一下，返回 401 就说明入口活着。
+探针本身失败不拦截（`.catch(() => undefined)`），以免探测故障挡住可用的 Codex。）
+
+### 网页版 ChatGPT 方向：出站隧道
+
+`chatgpt.com` 的连接器在浏览器里，够不到 `127.0.0.1`。唯一可行的接法是
+`mcp-accounts\tunnel-client.exe`（OpenAI 官方的**出站**守护进程）：它主动连
+`https://api.openai.com`，因此**不需要任何入站端口**。
+
+`TunnelFleet` 的每个账号一个子进程，`--health-listen-addr` 默认 `127.0.0.1:8080`
+（所以多账号要错开，`tunnelHealthPortBase` 可调）。密钥处理是这块最要紧的：
+
+- `accounts.json` 里的 `tunnel.controlPlaneKey` 是 **DPAPI 加密串**，
+  只在内存里解开，通过独立环境变量 `LCM_CP_KEY_<ID_UPPER_SNAKE>` 交给子进程；
+  `readAccounts()` **绝不把它带出配置读取层**，`describe()` 也只报
+  `keyConfigured: true/false`。自检会 grep 全部 JSON 与 describe 输出，确保没有泄漏。
+- 每个账号可能配自己的代理。**`NO_PROXY` 只对来自环境变量的代理生效**
+  （`pkg/proxy/route.go`），`--control-plane.http-proxy` 会忽略它
+  （`pkg/transport/proxy.go`）；所以用显式 control-plane 代理时必须清掉
+  `http_proxy`/`HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` 的全部大小写变体，
+  再钉上 `NO_PROXY=127.0.0.1,localhost,::1`（本地 `/readyz` 探活要走回环）。
+
+`$LASTEXITCODE` 在这里**证明不了成功**（宿主不一定等子进程），
+`prepareProfile()` 跑完 `init` 之后按**内容**校验 profile 里同时含 tunnel id、
+`env:<keyVar>` 与 listen addr，最多重试 10 次。停进程也只按 `ExecutablePath`
+匹配 tunnel-client 自己来杀，绝不按进程名 —— 同名进程可能是用户的另一个实例。
+
+隧道转发的是一个**字面 URL**，所以起隧道前 `syncTunnelTarget()` 会把舰队目标改成
+服务器实际落到的端口（被认领或向上找空闲端口时端口会变），否则连接器会指向旧端口。
+
+### 网页版方向的三个坑
+
+**`/readyz` 只证明进程活着。** 真密钥也可能 200，真正的验收是去
+`chatgpt.com/#settings/Connectors` 选中这条隧道后发一次真实工具调用。
+所以设置页必须把这句话写给用户，不能拿 READY 当成「已打通」。
+
+**`organizationId` 为空是本地看不见的失败。** 三个账号当前都是空的，
+会得到 `403 tunnel_active_organization_required`，而 `/readyz`、doctor、
+日志里都看不出原因。设置页因此在 organizationId 为空时显式警告。
+
+**Playwright MCP 要用 `localhost` 而不是 `127.0.0.1`。** 它按 `--allowed-hosts`
+校验 Host 头，裸 IP 直接 403；扩展令牌 `PLAYWRIGHT_MCP_EXTENSION_TOKEN` 只存在于
+用户级注册表（`reg query HKCU\Environment /v ...`），不在当前进程块里，
+所以 `resolveExtensionToken()` 查注册表而不是 `process.env`。
+
+### 隧道自检抓到的 bug
+
+**PS 5.1 里解不了 DPAPI。** `powershell.exe -NoProfile -NonInteractive -EncodedCommand`
+默认是 Windows PowerShell 5.1，不预载 `System.Security`，报
+`Unable to find type [System.Security.Cryptography.ProtectedData]`。
+`decryptControlPlaneKey` 的脚本开头补 `Add-Type -AssemblyName System.Security`。
+（路径以 PS 单引号字面量嵌进脚本：`-Command` 会把后面的 argv 当脚本续行。）
+密钥解出后只打印长度（实测 164 字符），不打印值。
 
 ## 已验证 / 未验证
 
@@ -317,8 +376,18 @@ MCP 的 `read_file` / `write_file` / `search_code` / `apply_patch` 与宿主原�
 
 **未验证**：客户端在应用里的真实观感（侧边栏排序、页签切换、记忆编辑器切页不丢稿、归档删除的
 确认框、4 个新页签在真实数据下的排版）——需要在应用里点一遍。
-`lcm_codex_task` 的**成功路径**也还没跑过：本机 Codex CLI 未登录，
-只验证了它会明确报「未登录」而不是挂死。
+`lcm_codex_task` 的**成功路径**也还没跑过：本机 Codex 走的中转 `new.ruiflux.sbs` 当前不可达
+（TCP 通、代理隧道 200，但 TLS 握手对端不回字节；同一代理访问 `api.openai.com` 正常），
+只验证了它会明确报「模型入口不可达」而不是挂死。
+网页版方向的隧道**从未真正建通过**：本机三个账号的 `organizationId` 都为空，
+隧道 ID 也没有在 `platform.openai.com/settings/organization/tunnels` 复核过，
+所以只验证到 profile 生成、内容校验、密钥解密与 `/readyz` 探测这一层，
+**没有一次成功的出站隧道，也没有一次来自 chatgpt.com 的真实工具调用**。
+
+> 服务端改动（含整个网页版方向）在下次重启宿主之前都不会生效。
+> `plugin_manager set_bundle` 会重载插件，但 Node 的 ESM 模块缓存不清。
+> `test\localcoding-plugin.test.mjs` 默认加载 profile 里那份副本、在进程内跑完整 `apply()`，
+> 就是为了在这条限制下仍然能验证新代码。
 
 ## 相关文档
 
