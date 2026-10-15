@@ -2,10 +2,15 @@
 
 README 只讲用途，这里记实现、踩过的坑和没验证的部分。
 
-## 综合平台的 11 个页签
+## 综合平台的 4 个页签
 
-一个插件、一个设置页（`settings.section`，id `desktop-platform`，order 900）、11 个页签。
+一个插件、一个设置页（`settings.section`，id `desktop-platform`，order 900）、4 个页签。
 页签在第一次打开时挂载，之后保持挂载（隐藏而非卸载）——记忆编辑器卸载会把没保存的输入丢掉。
+
+FreeModel 的 8 个页面不占外层页签：外层只有 1 个 `freemodel` 页签，里面一条自己的
+胶囊导航（`dshFmTabs` / `dshFmTab`）。一开始把 8 个功能各占一个外层页签，外层被撑到 11 个，
+读起来像另一个应用——用户明确要求收成 4 个。页内导航的选中项记在
+`dshDesktopPlatformFreeModel`，未打开过的页不构建（每个 owner 页一挂载就发请求）。
 
 前三页用本插件自己的 `/dsh-desktop/*` 路由；后 8 页是 `dsh-our-free-model` 的前端。
 
@@ -22,6 +27,15 @@ README 只讲用途，这里记实现、踩过的坑和没验证的部分。
 - **命名空间在 `entry.locale`**（与 `component`/`inject` 同级），不在 `entry.options`——
   `SlotCore.register` 只把 `key/id/order/label/priority` 收进 `options`。读错会静默走回退分支，
   界面全是原始 key（当时截图里一片 `nav.tab.free`）。
+
+## FreeModel 的玻璃质感
+
+照 `dsh-our-free-model` 的视觉重做：fixed 的 aurora 背景（三团 blur 70px 的色斑 + 漂移动画）、
+sticky 的毛玻璃导航条、胶囊页签、页面切换的淡入上移。色值全部用 `--dsw-alias-*`
+（连原版硬编码的 `#3ECFA0`、`rgba(62,207,160,…)` 都换成 `color-mix(in srgb, var(--dsw-alias-…) …)`），
+高光和投影用 `color-mix(in srgb, var(--dsw-alias-label-primary) N%, transparent)` 代替
+`rgb(255 255 255 / N%)`。aurora 必须在 root 里 `isolation:isolate` + `z-index:-1`：
+外壳是纯色背景时 `backdrop-filter` 没有东西可采样，玻璃面会退化成半透明方块。
 
 ## FreeModel：围栏与降级
 
@@ -182,7 +196,7 @@ node .\test\archive-delete.test.mjs
 两个都不需要装依赖：
 
 - `platform-client.test.mjs` 用假的 `window` / `document` / `react` 跑一遍 `apply()`，断言
-  注册了且只注册了 1 个 `settings.section`、11 个页签、中英 key 齐平、样式里没有硬编码色值、
+  注册了且只注册了 1 个 `settings.section`、4 个外层页签与 8 个页内页面、中英 key 齐平、样式里没有硬编码色值、
   排序落在所有内置页面之后；再逐个记起那 8 个 FreeModel 页签，断言它们读的正是上表里的路由、
   每个请求都带 `credentials: 'same-origin'`，以及 owner 返 404 时落到「未安装」提示而不是报错。
   最后用一套**有记忆的 hook** 真渲染看板、日志、聚合渠道、EAC 四个页面，断言它们把返回值画了出来
@@ -194,7 +208,7 @@ node .\test\archive-delete.test.mjs
 
 **已验证**（DSH Desktop 0.11.1，harness 0.2.0-rc.2）：
 
-- 两个自检脚本全过（含 11 个页签、8 个 FreeModel 页签的路由与渲染断言）。
+- 两个自检脚本全过（含 4 个页签、8 个页内页面的路由与渲染断言）。
 - `install-to-profile.ps1` 实测执行通过，旧依赖与改名残留已从 profile 摘除。
 - 服务端路由用 loopback 自检：命中即 200。
 

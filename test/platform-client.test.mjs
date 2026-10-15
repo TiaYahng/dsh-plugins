@@ -49,8 +49,14 @@ console.log(`i18n: ${Object.keys(en).length} keys, zh/en parity OK, nav=${zh.nav
 /* ── apply() wiring ─────────────────────────────────────────────────────── */
 const styleTags = []
 let rememberedTab = null
+// The FreeModel section keeps its own remembered page, under its own key.
+let rememberedSection = null
+const FM_STORAGE_KEY = 'dshDesktopPlatformFreeModel'
 globalThis.window = {
-  localStorage: { getItem: () => rememberedTab, setItem: () => {} },
+  localStorage: {
+    getItem: (key) => (key === FM_STORAGE_KEY ? rememberedSection : rememberedTab),
+    setItem: (key, value) => { if (key === FM_STORAGE_KEY) rememberedSection = value; else rememberedTab = value }
+  },
   __ModuleLoader__: { load: (registration) => { globalThis.__registration = registration } }
 }
 globalThis.document = {
@@ -155,9 +161,9 @@ const [tabBarElement, panelHost] = tree.children
 // The first child is the TabBar component element; render it to reach its props.
 const tabBar = tabBarElement.type(tabBarElement.props)
 if (tabBar.props.role !== 'tablist') throw new Error('first child is not the tab strip')
-if (tabBar.children.length !== 11) throw new Error(`expected 11 tabs, got ${tabBar.children.length}`)
+if (tabBar.children.length !== 4) throw new Error(`expected 4 tabs, got ${tabBar.children.length}`)
 const tabIds = tabBar.children.map((child) => child.props.id)
-const wanted = ['usage', 'archive', 'memory', 'upgrade', 'eac', 'aggregate', 'saver', 'routing', 'dashboard', 'logs', 'gateway']
+const wanted = ['usage', 'archive', 'memory', 'freemodel']
 if (tabIds.join() !== wanted.map((id) => `dshPlatformTab-${id}`).join()) {
   throw new Error(`tab ids: ${tabIds}`)
 }
@@ -199,13 +205,16 @@ const PAGES = {
 }
 
 for (const [id, routes] of Object.entries(PAGES)) {
-  rememberedTab = id
+  rememberedTab = 'freemodel'
+  rememberedSection = id
   registered.sections.length = 0
   plugin.apply(ctx)
   const mounted2 = registered.sections[registered.sections.length - 1]
   const rendered2 = expand(mounted2.component(mounted2.entry.inject()))
-  const own = findById(rendered2, `dshPlatformPanel-${id}`)
-  if (own === null) throw new Error(`${id} panel did not mount`)
+  // The owner page lives inside the one FreeModel tab, behind the inner nav.
+  if (findById(rendered2, 'dshPlatformPanel-freemodel') === null) throw new Error('the freemodel tab did not mount')
+  const own = findById(rendered2, `dshFmPanel-${id}`)
+  if (own === null) throw new Error(`${id} page did not mount behind the nav`)
   // The page is still loading (effects are inert in this harness), which is the
   // state that proves `t` reached it: the note is copy from our dictionary.
   if (findByText(rendered2, 'settings.desktopPlatform/owner.loading') === null) {
@@ -327,7 +336,8 @@ async function settled (mount, passes = 8) {
 
 async function pageWith (id) {
   hooked.reset()
-  rememberedTab = id
+  rememberedTab = 'freemodel'
+  rememberedSection = id
   registered.sections.length = 0
   plugin.apply(ctx)
   const mounted = registered.sections[registered.sections.length - 1]
@@ -382,7 +392,8 @@ globalThis.fetch = realFetch
 
 // 404 means the owner plugin is not installed: the pages must say so rather
 // than surfacing a raw HTTP error.
-rememberedTab = 'gateway'
+rememberedTab = 'freemodel'
+rememberedSection = 'gateway'
 registered.sections.length = 0
 plugin.apply(ctx)
 const absentMount = registered.sections[registered.sections.length - 1]
@@ -400,9 +411,33 @@ if (capturedState === null || capturedState.absent !== true) {
 }
 console.log('owner absent (404): every page shows the install hint instead of an error')
 
+// The inner nav is the owner's affordance, ours: eight entries, and the
+// remembered page is the one that is actually on screen.
+rememberedTab = 'freemodel'
+rememberedSection = 'dashboard'
+registered.sections.length = 0
+plugin.apply(ctx)
+const navMount = registered.sections[registered.sections.length - 1]
+const navTree = expand(navMount.component(navMount.entry.inject()))
+// Scope the search to the FreeModel panel: the platform's own tab strip is
+// a tablist too, and it comes first in the tree.
+const navPanel = findById(navTree, 'dshPlatformPanel-freemodel')
+const navList = navPanel === null ? null : findByRole(navPanel, 'tablist')
+if (navList === null) throw new Error('the FreeModel section has no nav')
+const navIds = navList.children.map((child) => child.props.id)
+const navWanted = ['upgrade', 'eac', 'aggregate', 'saver', 'routing', 'dashboard', 'logs', 'gateway']
+if (navIds.join() !== navWanted.map((id) => `dshFmTab-${id}`).join()) {
+  throw new Error(`nav ids: ${navIds}`)
+}
+if (findById(navTree, 'dshFmPanel-dashboard') === null) throw new Error('the remembered page did not mount')
+// A page the user never opened must not be built: an owner page reads the
+// network on mount, and eight of them at once is eight round trips.
+if (findById(navTree, 'dshFmPanel-logs') !== null) throw new Error('an unvisited nav page was mounted anyway')
+console.log(`freemodel nav: ${navIds.length} entries, remembered page dashboard, unvisited pages not built`)
+
 // The mount is history: nothing may bring another plugin's settings section in.
-if (/ForeignPage|ofm_navbrand|tab\.freemodel/.test(source)) {
-  throw new Error('the other plugin\'s page is mounted again')
+if (/ForeignPage|ofm_navbrand|entry\.options\.locale/.test(source)) {
+  throw new Error('the other plugin\'s page is mounted again, or the mount\'s entry-reading idiom came back')
 }
 console.log('foreign mount: gone from the source')
 
@@ -425,6 +460,11 @@ function findByText (node, needle) {
   walkTree(node, (candidate) => {
     if (hit === null && candidate.children.some((child) => child === needle)) hit = candidate
   })
+  return hit
+}
+function findByRole (node, role) {
+  let hit = null
+  walkTree(node, (candidate) => { if (hit === null && candidate.props.role === role) hit = candidate })
   return hit
 }
 function findById (node, id) {

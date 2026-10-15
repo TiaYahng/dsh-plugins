@@ -56,25 +56,24 @@ window.__ModuleLoader__.load({
       { id: 'usage', label: 'tab.usage' },
       { id: 'archive', label: 'tab.archive' },
       { id: 'memory', label: 'tab.memory' },
-      { id: 'upgrade', label: 'tab.upgrade' },
-      { id: 'eac', label: 'tab.eac' },
-      { id: 'aggregate', label: 'tab.aggregate' },
-      { id: 'saver', label: 'tab.saver' },
-      { id: 'routing', label: 'tab.routing' },
-      { id: 'dashboard', label: 'tab.dashboard' },
-      { id: 'logs', label: 'tab.logs' },
-      { id: 'gateway', label: 'tab.gateway' }
+      // The FreeModel pages live behind this one tab, under their own nav.
+      { id: 'freemodel', label: 'tab.freemodel' }
     ]
-
     const en = {
       nav: 'Platform',
       "tab.usage": 'Usage',
       "tab.archive": 'Archived sessions',
       "tab.memory": 'Memory',
-      "tab.upgrade": 'FreeModel · Upgrade',
-      "tab.saver": 'FreeModel · Save tokens',
-      "tab.gateway": 'FreeModel · Gateway',
-      "tab.routing": 'FreeModel · Routing',
+      "tab.freemodel": 'FreeModel',
+      "fm.title": 'FreeModel features',
+      "fm.upgrade": 'Upgrade',
+      "fm.eac": 'EAC models',
+      "fm.aggregate": 'Aggregate',
+      "fm.saver": 'Save tokens',
+      "fm.routing": 'Routing',
+      "fm.dashboard": 'Dashboard',
+      "fm.logs": 'Call log',
+      "fm.gateway": 'Gateway',
       "usage.title": 'Totals',
       intro: 'Token accounting folded from this profile’s stored session logs. Counts come from what each provider reported, so a route that reports no usage contributes none.',
       refresh: 'Refresh',
@@ -269,9 +268,6 @@ window.__ModuleLoader__.load({
       "routing.disabled": 'Disabled',
       "routing.delete": 'Delete',
 "tab.eac": 'FreeModel · EAC models',
-      "tab.aggregate": 'FreeModel · Aggregate',
-      "tab.dashboard": 'FreeModel · Dashboard',
-      "tab.logs": 'FreeModel · Call log',
       "eac.intro": 'The EAC lane is the co-paid channel: it answers with a GitHub identity you authorise once, and the plugin holds the token — this page only starts the flow, polls it and signs out.',
       "eac.laneReady": 'EAC lane configured',
       "eac.laneMissing": 'EAC lane not configured',
@@ -372,10 +368,16 @@ window.__ModuleLoader__.load({
       "tab.usage": '用量统计',
       "tab.archive": '归档历史',
       "tab.memory": '记忆系统',
-      "tab.upgrade": 'FreeModel · 插件升级',
-      "tab.saver": 'FreeModel · 省 Token',
-      "tab.gateway": 'FreeModel · 网关设置',
-      "tab.routing": 'FreeModel · 路由',
+      "tab.freemodel": 'FreeModel',
+      "fm.title": 'FreeModel 功能',
+      "fm.upgrade": '插件升级',
+      "fm.eac": 'EAC 模型',
+      "fm.aggregate": '聚合渠道',
+      "fm.saver": '省 Token',
+      "fm.routing": '路由',
+      "fm.dashboard": '数据看板',
+      "fm.logs": '运行日志',
+      "fm.gateway": '网关设置',
       "usage.title": '统计概览',
       intro: '统计来自本 Profile 已存储的会话事件日志。计数取自各服务商实际上报的用量，未上报用量的请求不计入。',
       refresh: '刷新',
@@ -570,9 +572,6 @@ window.__ModuleLoader__.load({
       "routing.disabled": '已停用',
       "routing.delete": '删除',
 "tab.eac": 'FreeModel · EAC 模型',
-      "tab.aggregate": 'FreeModel · 聚合渠道',
-      "tab.dashboard": 'FreeModel · 数据看板',
-      "tab.logs": 'FreeModel · 运行日志',
       "eac.intro": 'EAC 这条通道是「共付」路线：用 GitHub 身份授权一次，之后由插件保管凭据。本页只负责发起授权、轮询结果和退出。',
       "eac.laneReady": 'EAC 通道已配置',
       "eac.laneMissing": 'EAC 通道未配置',
@@ -745,6 +744,25 @@ window.__ModuleLoader__.load({
 .dshPlatformStack{gap:10px;display:flex;flex-direction:column}
 .dshPlatformChain{border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-module-platform);flex-direction:column;gap:8px;padding:10px 12px;display:flex}
 .dshPlatformChainHead{align-items:center;gap:8px;flex-wrap:wrap;display:flex}
+    /* ── FreeModel 的玻璃质感：毛玻璃只给大块面，小卡片用半透明叠层 ────────── */
+.dshFm{position:relative;display:flex;flex-direction:column;gap:18px;max-width:1120px;isolation:isolate}
+.dshFmAurora{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.dshFmAurora i{position:absolute;display:block;border-radius:50%;filter:blur(70px);opacity:.42;animation:dshFmDrift 44s ease-in-out infinite alternate}
+.dshFmAurora i:nth-child(1){width:46vw;height:46vw;left:-12vw;top:-14vw;background:radial-gradient(circle,color-mix(in srgb,var(--dsw-alias-state-business-primary) 62%,transparent),transparent 68%)}
+.dshFmAurora i:nth-child(2){width:38vw;height:38vw;right:-10vw;top:4vh;background:radial-gradient(circle,color-mix(in srgb,var(--dsw-alias-state-success-primary) 42%,transparent),transparent 70%);animation-duration:56s;animation-delay:-12s}
+.dshFmAurora i:nth-child(3){width:42vw;height:42vw;left:22vw;bottom:-18vw;background:radial-gradient(circle,color-mix(in srgb,var(--dsw-alias-brand-primary) 34%,transparent),transparent 70%);animation-duration:64s;animation-delay:-26s}
+@keyframes dshFmDrift{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(3vw,2vh,0) scale(1.09)}100%{transform:translate3d(-3vw,-2vh,0) scale(.96)}}
+.dshFmNav{position:sticky;top:0;z-index:30;padding:10px 12px;border-radius:16px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 82%,transparent);background:color-mix(in srgb,var(--dsw-alias-bg-layer-2) 62%,transparent);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 7%,transparent),0 8px 26px color-mix(in srgb,var(--dsw-alias-label-primary) 10%,transparent)}
+.dshFmTabs{position:relative;display:flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:13px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l1) 80%,transparent);background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 62%,transparent);box-shadow:inset 0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 4%,transparent)}
+.dshFmTab{position:relative;z-index:1;font:inherit;font-size:12px;font-weight:600;padding:6px 13px;border-radius:10px;border:0;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;white-space:nowrap;transition:color .2s ease,background .2s ease}
+.dshFmTab:hover{color:var(--dsw-alias-label-primary)}
+.dshFmTab.isOn{color:var(--dsw-alias-label-primary);background:linear-gradient(150deg,color-mix(in srgb,var(--dsw-alias-bg-layer-3) 92%,transparent),color-mix(in srgb,var(--dsw-alias-bg-layer-2) 88%,transparent));box-shadow:0 3px 10px color-mix(in srgb,var(--dsw-alias-label-primary) 14%,transparent),inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 9%,transparent)}
+.dshFmPage{display:flex;flex-direction:column;gap:20px;animation:dshFmPageIn .4s cubic-bezier(.16,1,.3,1)}
+@keyframes dshFmPageIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.dshFm .dshPlatformCard,.dshFm .dshPlatformStat,.dshFm .dshPlatformChain{background:color-mix(in srgb,var(--dsw-alias-bg-layer-2) 68%,transparent);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 78%,transparent);border-radius:16px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 6%,transparent),0 12px 34px color-mix(in srgb,var(--dsw-alias-label-primary) 9%,transparent)}
+.dshFm .dshPlatformInput,.dshFm .dshPlatformSelect,.dshFm .dshPlatformTextarea{background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 72%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-border-l2) 70%,transparent);border-radius:10px}
+.dshFm .dshPlatformPill{background:color-mix(in srgb,var(--dsw-alias-bg-layer-3) 62%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-border-l2) 60%,transparent)}
+.dshFm .dshPlatformMeter{background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 70%,transparent)}
 @media (prefers-reduced-motion:reduce){
 .dshPlatformTab,.dshPlatformMeterFill,.dshPlatformMeterFillOver{transition:none}
 }
@@ -1561,6 +1579,78 @@ window.__ModuleLoader__.load({
      * switching tabs and back never discards unsaved text or re-requests what
      * is already on screen.
      */
+    /* ── FreeModel：一条页内导航，底下是八个子页面 ───────────────────────────
+       One outer tab, one inner nav. The owner plugin splits these across tabs
+       of its own; lifting them all into the platform's tab strip made an
+       eleven-tab row that read like a different application. The inner nav is
+       the same affordance the owner uses, and it is ours — which is the whole
+       reason this section exists: 「免费模型」never appears in it. */
+
+    const FM_STORAGE_KEY = 'dshDesktopPlatformFreeModel'
+    const FM_SECTIONS = [
+      { id: 'upgrade', label: 'fm.upgrade' },
+      { id: 'eac', label: 'fm.eac' },
+      { id: 'aggregate', label: 'fm.aggregate' },
+      { id: 'saver', label: 'fm.saver' },
+      { id: 'routing', label: 'fm.routing' },
+      { id: 'dashboard', label: 'fm.dashboard' },
+      { id: 'logs', label: 'fm.logs' },
+      { id: 'gateway', label: 'fm.gateway' }
+    ]
+
+    function FreeModelSection ({ t }) {
+      const [section, setSection] = React.useState(() => {
+        try {
+          const saved = window.localStorage.getItem(FM_STORAGE_KEY)
+          return FM_SECTIONS.some((row) => row.id === saved) ? saved : FM_SECTIONS[0].id
+        } catch {
+          return FM_SECTIONS[0].id
+        }
+      })
+      const select = (id) => {
+        setSection(id)
+        try { window.localStorage.setItem(FM_STORAGE_KEY, id) } catch { /* storage is optional */ }
+      }
+      const pages = {
+        upgrade: UpgradePage,
+        eac: EacPage,
+        aggregate: AggregatePage,
+        saver: SaverPage,
+        routing: RoutingPage,
+        dashboard: DashboardPage,
+        logs: LogPage,
+        gateway: GatewayPage
+      }
+      const Page = pages[section]
+      return React.createElement('div', { className: 'dshFm' },
+        // A flat shell background leaves backdrop-filter nothing to sample, so
+        // every glass surface would read as a plain translucent box. The blobs
+        // sit behind the content and never escape this section's stacking.
+        React.createElement('div', { className: 'dshFmAurora', 'aria-hidden': 'true' },
+          React.createElement('i', { key: 'a' }),
+          React.createElement('i', { key: 'b' }),
+          React.createElement('i', { key: 'c' })),
+        React.createElement('div', { className: 'dshFmNav' },
+          React.createElement('div', { className: 'dshFmTabs', role: 'tablist', 'aria-label': t('fm.title') },
+            FM_SECTIONS.map((row) => React.createElement('button', {
+              key: row.id,
+              type: 'button',
+              role: 'tab',
+              id: `dshFmTab-${row.id}`,
+              className: section === row.id ? 'dshFmTab isOn' : 'dshFmTab',
+              'aria-selected': section === row.id,
+              'aria-controls': `dshFmPanel-${row.id}`,
+              tabIndex: section === row.id ? 0 : -1,
+              onClick: () => select(row.id)
+            }, t(row.label))))),
+        React.createElement('div', {
+          className: 'dshFmPage',
+          role: 'tabpanel',
+          id: `dshFmPanel-${section}`,
+          'aria-labelledby': `dshFmTab-${section}`
+        }, React.createElement(Page, { t })))
+    }
+
     function PlatformSection({ t, scope, host }) {
       const [active, setActive] = React.useState(storedTab)
       const [visited, setVisited] = React.useState(() => new Set([storedTab()]))
@@ -1576,16 +1666,9 @@ window.__ModuleLoader__.load({
         React.createElement(TabBar, { t, active, onSelect: select }),
         React.createElement('div', { className: 'dshPlatformPanels' },
           tabPanel(TABS[0], React.createElement(UsagePanel, { t, scope })),
-          tabPanel(TABS[1], React.createElement(ArchivePanel, { t, host })),
-          tabPanel(TABS[2], React.createElement(MemoryPanel, { t })),
-          tabPanel(TABS[3], React.createElement(UpgradePage, { t })),
-          tabPanel(TABS[4], React.createElement(EacPage, { t })),
-          tabPanel(TABS[5], React.createElement(AggregatePage, { t })),
-          tabPanel(TABS[6], React.createElement(SaverPage, { t })),
-          tabPanel(TABS[7], React.createElement(RoutingPage, { t })),
-          tabPanel(TABS[8], React.createElement(DashboardPage, { t })),
-          tabPanel(TABS[9], React.createElement(LogPage, { t })),
-          tabPanel(TABS[10], React.createElement(GatewayPage, { t }))))
+      tabPanel(TABS[1], React.createElement(ArchivePanel, { t, host })),
+      tabPanel(TABS[2], React.createElement(MemoryPanel, { t })),
+      tabPanel(TABS[3], React.createElement(FreeModelSection, { t }))))
     }
     /* ── FreeModel：自建的四个页面 ───────────────────────────────────────────
        The state, credentials, ports and the model adapter all belong to the

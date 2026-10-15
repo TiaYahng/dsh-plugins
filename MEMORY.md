@@ -17,7 +17,7 @@
 - 2026-10-15 跨插件挂载别人注册的设置页时，必须连 `close` 和 `t`（`ctx.locale.bind(entry.options.locale)`）一起给；缺 `t` 会在渲染期抛错、页签白屏。
 - 2026-10-15 slot 记录的命名空间在 `entry.locale`（与 component/inject 同级），`entry.options` 里只有 key/id/order/label/priority；读错会静默退化成回显 key。
 - 2026-10-15 挂载别人的设置页做不到「只显示其中几页」：页签条是对方组件内部的 state，外部无法隐藏单个页签，用户因此要求删掉「免费模型」那一页。结论：这 4 页改为自建前端，只读它的 `/api/our-free-model/*`。
-- 2026-10-15 综合平台现有 11 个页签：用量统计 / 归档历史 / 记忆系统 + FreeModel 的 插件升级 / EAC 模型 / 聚合渠道 / 省 Token / 路由 / 数据看板 / 运行日志 / 网关设置（后 8 个自建，共 297 个中英 key）。
+- 2026-10-15 综合平台 4 个外层页签：用量统计 / 归档历史 / 记忆系统 / FreeModel；FreeModel 的 8 个页面在页内导航里（用户嫌 11 个外层页签太多、太不像原版）。
 - 2026-10-15 FreeModel 的看板与运行日志不需要 channel pack：`GET /api/our-free-model/stats` 一个接口就够（`grand`/`models`/`days`/`savings` + 最近 200 条 `samples`，含 `truncated`/`noUsage` 标记）。
 - 2026-10-15 FreeModel 唯一没搬的页是「白嫖模型接入」：它读被吸收的 channel pack 的 RPC（`connection.rpc.call('/api', 'channel-pack', { method: 'usage.tokenLedger' })`），本机没装那个 pack，拿不到结构就不写。
 - 2026-10-15 README 只留用途（页签表 + 安装一行），实现与踩坑移到 `docs/ENGINEERING.md`。
