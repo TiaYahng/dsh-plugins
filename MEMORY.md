@@ -11,7 +11,7 @@
 - 2026-10-14 客户端模块加载器（dsh-client-modules）的 `require` 只认平台 seed 名与已注册模块 id，**没有同步相对导入**；client.js 想拆文件只能用 `require.async('./client.x.js')` 异步 chunk。
 - 2026-10-14 查宿主源码要读 `E:\ai\DSH Desktop\resources\app.asar`（自写脚本按 asar 头部 JSON 读文件即可，不用解包）；`%APPDATA%\dsh-desktop\harness\profiles\node_modules\@deepseek-ai\*` 是指向已不存在路径的失效 junction。
 - 2026-10-14 宿主 client 服务名（写进插件 `inject` 数组的就是这些字符串）：`slots`、`locale`、`configForms`、`sessions`、`uiWorkspace`、`remote`、`remote.session`；外部服务用 `ctx.inject([...], cb)` 软依赖，缺了只是功能不出现，不会拖垮整个插件。
-- 2026-10-14 改完 `dsh-plugins` 下的代码必须重跑 `install-to-profile.ps1` 再重启 DSH Desktop；服务端可用 loopback 路由自检，客户端只能靠用户看界面。
+- 2026-10-14 改完 `dsh-plugins` 下的代码必须重跑 `install-to-profile.ps1` 再重启应用（该脚本只对 `%APPDATA%` 那套 profile 有效；在跑的那套见 2026-10-16 的两条）；服务端可用 loopback 路由自检，客户端只能靠用户看界面。
 - 2026-10-15 `ctx.slots.entries(key)` 返回的 entry 自带 `component`，可以跨插件把别人注册的设置页直接渲染进自己的页面（本仓库用它把 dsh-our-free-model 的整页挂进综合平台）；账本变化用 `getVersion` + `subscribe` 观察。
 - 2026-10-15 dsh-our-free-model 的 `/api/our-free-model/*` 有信任围栏，外部请求一律 401，页面只能在渲染进程里用同源凭据访问；它装的版本与 GitHub main 一致（2.1.0）。
 - 2026-10-15 跨插件挂载别人注册的设置页时，必须连 `close` 和 `t`（`ctx.locale.bind(entry.options.locale)`）一起给；缺 `t` 会在渲染期抛错、页签白屏。
@@ -22,7 +22,17 @@
 - 2026-10-15 宿主一共 119 个 `--dsw-alias-*`，state 色相只有 `business/idle/success/warn/error` 五个；写 `info`/`brand`/`warning`/`danger` 不会报错而是整条声明作废（渐变/文字消失）。快照在 `test/dsw-tokens.json`，自检逐个核对。
 - 2026-10-15 综合平台 4 个外层页签：用量统计 / 归档历史 / 记忆系统 / FreeModel；FreeModel 的 9 个页面在页内导航里（用户嫌 11 个外层页签太多、太不像原版）。
 - 2026-10-15 FreeModel 的看板与运行日志不需要 channel pack：`GET /api/our-free-model/stats` 一个接口就够（`grand`/`models`/`days`/`savings` + 最近 200 条 `samples`，含 `truncated`/`noUsage` 标记）。
-- 2026-10-15 FreeModel 唯一不读 `/api` 的页是「模型接入」：13 个渠道的账号与模型走 channel pack 的 RPC（`provider.status` / `account.list` / `model.list` / `provider.setEnabled` 等），13 个渠道状态一次问完，账号与模型折叠起来才加载。
+- 2026-10-15 FreeModel 只有「模型接入」和「渠道用量」不读 `/api`：13 个渠道的账号/积分/模型黑名单、以及 90 天落盘账本，都在 channel pack 的 RPC 里（`provider.status`/`account.list`/`credits.balances`/`credits.claimAll`/`usage.autoCheckin`/`usage.tokenLedger[History]`）。
+- 2026-10-16 账本有两个，不能混：`/api/our-free-model/stats` 只数插件自己的免费线路；渠道账号的 token 在 pack 的 `usage.tokenLedger`（进程内 500 条）和 `usage.tokenLedgerHistory`（落盘 90 天），形状是 channel→provider→account→model。
+- 2026-10-16 pack 的账本行在样本为 0 时**不写** `avgTtftMs`/`avgTps` 两个键（`finalizeAverages` 用条件展开），读的时候必须判空，不能当 0。
 - 2026-10-15 README 只留用途（页签表 + 安装一行），实现与踩坑移到 `docs/ENGINEERING.md`。
 - 2026-10-15 仓库已推到 `https://github.com/TiaYahng/dsh-plugins`（公开，主分支 `main`，本地 master 已改名）。本机没有 `gh` CLI，但 Windows 凭据管理器里存着 github.com 的 40 位 token：`git credential fill` 能取到，可直接用它调 GitHub API（建仓库、设描述）。
 - 2026-10-15 全局 git 配置里第二条 `credential.helper`（`!".../PortableGit/.../git-credential-manager.exe"`）指向不存在的文件，每次 push 会报一次 `store: ... No such file or directory`——是噪音，推送本身照样成功。
+- 2026-10-16 跑着的应用是 `E:\ai\DeepSeek Harness\DeepSeek Harness.exe`，harness home 为 `C:\Users\HP-XXX\.dsh`，profile 为 `~/.dsh\profiles\desktop`；`%APPDATA%\dsh-desktop\harness\profiles\web` 是另一套遗留的 DSH Desktop profile，GUI 端口 19387 两者共用但只认前者。
+- 2026-10-16 **不要在 `~/.dsh\profiles\desktop` 里跑 pnpm**：pnpm 11.15.1 会在 `Packages: +N -2` 后报 `Worker pnpm#8 exited with code 1`（不给出真实原因），并把两个 `file:` 插件从 `node_modules` 删掉、`.pnpm` 虚拟store 清空。装插件改用：把 `plugins\<name>` 复制到 `node_modules\<name>`，再 `plugin_manager set_bundle enabled=false` → `enabled=true`，立刻生效且不重启。
+- 2026-10-16 `plugin_manager set_bundle` 的 disable→enable 会重载插件（`application:"applied"`），但 **Node 的 ESM 模块缓存不清**，改过的 server 代码要重启应用才生效；只改前端 client 时刷新页面即可。
+- 2026-10-16 宿主 `tools.register` 的 JSON Schema 只支持子集 `type/oneOf/properties/required/additionalProperties/items/enum/const` + 注解 `description/title/default/examples`，多写一个 key 就 `unsupported JSON schema: ... is not a supported keyword`；`additionalProperties` 必须是 boolean，`required` 的每一项必须出现在 `properties` 里，保留名 `run_code`。
+- 2026-10-16 宿主 `execute()` 返回的是**裸值**：宿主自己做 `validateJsonSchemaValue(tool.output.schema, value)` 再调 `output.render(args, value)` 生成 content。所以失败要 **throw**，不要返回 `{isError:true}`——throw 会被宿主转成 `Error: <message>` 的 isError 结果。
+- 2026-10-16 MCP `tools/call` 成功时**没有 `isError` 字段**（缺失即成功），`result.content[0].text` 是需要 `JSON.parse` 的字符串；`POST /mcp` 回 `text/event-stream`，要按 SSE 解 `event: message\ndata: {...}`，会话靠响应头 `Mcp-Session-Id`，**千万别开 `GET /mcp`**（长连接永不结束，会挂住调用方）。
+- 2026-10-16 Codex CLI（`codex-cli 0.130.0-alpha.5`，`%LOCALAPPDATA%\OpenAI\Codex\bin\codex.exe`）未登录时 `codex exec` **静默挂起不返回**，只能靠 `codex login status`（非 0 退出 = 未登录）提前拦；`codex mcp add <名> --url <URL>` 对已存在的名字是就地覆盖、退出码 0，不需要先 remove。
+- 2026-10-16 **不要关闭或重启 DeepSeek Harness**：用户当前就是通过这个应用在对话，重启等于把会话掐掉。服务端代码的改动只能留到用户自己下次自然启动时生效。

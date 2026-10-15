@@ -477,6 +477,43 @@ const channelStatuses = {
 }
 
 const rpcCalls = []
+// The ledger the pack keeps for the channel accounts, in the shape the pack
+// actually builds it: channel → provider → account → model, with the averages
+// already divided by readTokenLedger's finalizeAverages.
+const ledgerRow = {
+  requests: 12,
+  reportedRequests: 11,
+  inputTokens: 900,
+  outputTokens: 300,
+  cacheReadTokens: 1200,
+  cacheWriteTokens: 0,
+  reasoningTokens: 40,
+  errors: 1,
+  avgTtftMs: 420,
+  avgTps: 38.5
+}
+const packSnapshot = {
+  channels: [{
+    channel: 'lobsterai',
+    providers: [{
+      provider: 'lobsterai',
+      accounts: [{
+        accountId: 'lobsterai-adf4e80e',
+        models: [{ model: 'deepseek-flash', ...ledgerRow }],
+        totals: ledgerRow
+      }],
+      totals: ledgerRow
+    }],
+    totals: ledgerRow
+  }],
+  totals: ledgerRow,
+  entries: [
+    { at: 1760000000000, channel: 'lobsterai', provider: 'lobsterai', accountId: 'lobsterai-adf4e80e', model: 'deepseek-flash', usageReported: true, inputTokens: 120, outputTokens: 40, ttftMs: 310, tps: 41.2 },
+    { at: 1760000001000, channel: 'lobsterai', provider: 'lobsterai', accountId: 'lobsterai-adf4e80e', model: 'deepseek-flash', usageReported: false, error: 'upstream 5xx', inputTokens: 0, outputTokens: 0 }
+  ]
+}
+const packHistory = [{ day: '2026-10-15', channels: packSnapshot.channels, totals: ledgerRow }]
+
 const packConnection = {
   rpc: {
     call: async (_space, endpoint, body) => {
@@ -489,6 +526,27 @@ const packConnection = {
         return { ok: true, value: { models: [{ id: 'deepseek-v3', name: 'DeepSeek V3', disabled: false, isFree: true }] } }
       }
       if (body.method === 'account.create') return { ok: true, value: { authUrl: 'https://example.invalid/login' } }
+      if (body.method === 'usage.tokenLedger') return { ok: true, value: { snapshot: packSnapshot } }
+      if (body.method === 'usage.tokenLedgerHistory') return { ok: true, value: { history: packHistory, totals: ledgerRow } }
+      if (body.method === 'usage.autoCheckin') {
+        return body.payload?.enabled === undefined
+          ? { ok: true, value: { autoCheckin: { enabled: true, lastAt: 1760000000000, lastResult: 'claimed' } } }
+          : { ok: true, value: { autoCheckin: { enabled: body.payload.enabled, lastAt: 1760000000000, lastResult: 'claimed' } } }
+      }
+      if (body.method === 'credits.balances') {
+        return {
+          ok: true,
+          value: {
+            accounts: [
+              { accountId: 'codearts-1c6d8fce', nickname: 'work account', balance: 120 },
+              { accountId: 'lobsterai-adf4e80e', nickname: 'personal', balance: null, error: '凭据未配置' }
+            ]
+          }
+        }
+      }
+      if (body.method === 'credits.claimAll') {
+        return { ok: true, value: { results: [], summary: { claimed: 1, 'already-claimed': 1, inactive: 0, failed: 0 } } }
+      }
       return { ok: true, value: {} }
     }
   }
@@ -532,6 +590,14 @@ const asked = rpcCalls[0].payload.providers
 if (!Array.isArray(asked) || asked.length !== 13 || !asked.includes('codearts')) {
   throw new Error(`the accounts page asked for the wrong providers: ${JSON.stringify(asked)}`)
 }
+// The pack's own daily check-in is a switch above the cards, and it is read
+// with the same door — a page that only lists accounts would never show it.
+if (!rpcCalls.some((call) => call.method === 'usage.autoCheckin')) {
+  throw new Error('the accounts page never asked the pack about auto check-in')
+}
+if (findByText(packTree, 'settings.desktopPlatform/accounts.autoCheckinHint') === null) {
+  throw new Error('the auto check-in switch is not on the page')
+}
 const accountText = textsOf(packTree)
 for (const needle of ['CodeArts', 'LobsterAI', 'settings.desktopPlatform/accounts.state.on', 'settings.desktopPlatform/accounts.state.closed']) {
   if (!accountText.includes(needle)) throw new Error(`the accounts page never shows ${needle}`)
@@ -551,6 +617,52 @@ if (findByText(blindTree, 'settings.desktopPlatform/accounts.noBridge') === null
 }
 console.log('accounts: no connection service → the page explains itself')
 
+
+
+
+// The dashboard reads a second ledger — the pack's, not the owner's — and the
+// call log can switch to it. Both are invisible without the bridge, so they
+// are asserted here rather than left to the eye.
+rememberedTab = 'freemodel'
+rememberedSection = 'dashboard'
+registered.sections.length = 0
+plugin.apply(ctx)
+const dashMount = registered.sections[registered.sections.length - 1]
+hooked.reset()
+const dashTree = await settled(() => dashMount.component({
+  t: (key) => `settings.desktopPlatform/${key}`,
+  scope: {},
+  host: { session: null },
+  ctx: withBridge
+}))
+if (!rpcCalls.some((call) => call.method === 'usage.tokenLedgerHistory')) {
+  throw new Error('the pack ledger was never read')
+}
+const dashText = textsOf(dashTree)
+if (!dashText.includes('lobsterai')) {
+  throw new Error(`the channel ledger is not on the dashboard: ${JSON.stringify(dashText.slice(-8))}`)
+}
+if (!dashText.some((text) => text.includes('900') || text.includes('1,200'))) {
+  throw new Error('the channel ledger shows no token figures')
+}
+console.log('dashboard: the pack\'s channel ledger is rendered beside the owner\'s own')
+
+rememberedSection = 'logs'
+const logMount2 = registered.sections[registered.sections.length - 1]
+hooked.reset()
+const logTree2 = await settled(() => logMount2.component({
+  t: (key) => `settings.desktopPlatform/${key}`,
+  scope: {},
+  host: { session: null },
+  ctx: withBridge
+}))
+if (findByText(logTree2, 'settings.desktopPlatform/log.laneOwner') === null) {
+  throw new Error('the call log has no lane switch')
+}
+if (findByText(logTree2, 'settings.desktopPlatform/log.lanePack') === null) {
+  throw new Error('the call log offers no channel lane')
+}
+console.log('call log: both lanes offered, the channel one read from the pack')
 
 // The inner nav is the owner's affordance, ours: eight entries, and the
 // remembered page is the one that is actually on screen.

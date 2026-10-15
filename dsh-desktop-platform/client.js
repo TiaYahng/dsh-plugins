@@ -103,6 +103,30 @@ window.__ModuleLoader__.load({
       "accounts.state.on": 'Available',
       "accounts.state.off": 'No accounts',
       "accounts.state.closed": 'All closed',
+      "accounts.foldCredits": 'Credits',
+      "accounts.claim": 'Claim today',
+      "accounts.claimed": 'Claimed: {claimed} · already {already} · inactive {inactive} · failed {failed}',
+      "accounts.balanceUnavailable": 'balance unavailable',
+      "accounts.autoCheckin": 'Daily auto check-in',
+      "accounts.autoCheckinSwitch": 'Check in by itself',
+      "accounts.autoCheckinHint": 'The plugin claims once a day, for every channel that has a check-in, without spending one of your requests.',
+      "accounts.autoCheckinLast": 'Last {at} · {result}',
+      "accounts.creditBadge": 'Credits',
+      "lane.title": "Channel usage (the pack's own ledger)",
+      "lane.intro": "The table above counts the plugin's own free lane only. The thirteen channel accounts keep a second ledger inside the pack, persisted for ninety days, with the recent calls in memory beside it. The two never overlap.",
+      "lane.loading": "Reading the channel ledger…",
+      "lane.empty": "No channel call recorded yet.",
+      "lane.requests": "calls",
+      "lane.reported": "usage reported",
+      "lane.cache": "cache read",
+      "lane.cacheHint": "a channel's cache hits can outrun its output",
+      "lane.errors": "errors",
+      "lane.fold": "Expand",
+      "lane.byDay": "By day (90 days on disk)",
+      "lane.failed": "The channel ledger could not be read: {message}",
+      "log.lane": "Call source",
+      "log.laneOwner": "Own lane",
+      "log.lanePack": "Channel accounts",
 
       "usage.title": 'Totals',
       intro: 'Token accounting folded from this profile’s stored session logs. Counts come from what each provider reported, so a route that reports no usage contributes none.',
@@ -439,6 +463,30 @@ window.__ModuleLoader__.load({
       "accounts.state.on": '可用',
       "accounts.state.off": '无账号',
       "accounts.state.closed": '已全部关闭',
+      "accounts.foldCredits": '积分',
+      "accounts.claim": '领取今日积分',
+      "accounts.claimed": '领取完成：成功 {claimed} · 已领 {already} · 未开始 {inactive} · 失败 {failed}',
+      "accounts.balanceUnavailable": '余额读不到',
+      "accounts.autoCheckin": '每日自动签到',
+      "accounts.autoCheckinSwitch": '自动签到',
+      "accounts.autoCheckinHint": '插件自己在每天的固定时刻为所有支持签到的渠道领一次，不占用你的请求。',
+      "accounts.autoCheckinLast": '上次 {at} · {result}',
+      "accounts.creditBadge": '积分',
+      "lane.title": "渠道用量（channel pack 账本）",
+      "lane.intro": "上面那张表只数插件自己的免费线路。十三条渠道账号的 token 记在 channel pack 的另一本账里，落盘保留 90 天，进程内另有最近若干条逐次记录。两者互不重叠。",
+      "lane.loading": "正在读取渠道账本…",
+      "lane.empty": "还没有渠道调用记录。",
+      "lane.requests": "次调用",
+      "lane.reported": "上报用量",
+      "lane.cache": "缓存读取",
+      "lane.cacheHint": "渠道的缓存命中有时比输出还多",
+      "lane.errors": "失败",
+      "lane.fold": "展开",
+      "lane.byDay": "按天（落盘 90 天）",
+      "lane.failed": "渠道账本读取失败：{message}",
+      "log.lane": "调用来源",
+      "log.laneOwner": "插件自有线路",
+      "log.lanePack": "渠道账号",
 
       "usage.title": '统计概览',
       intro: '统计来自本 Profile 已存储的会话事件日志。计数取自各服务商实际上报的用量，未上报用量的请求不计入。',
@@ -846,6 +894,7 @@ window.__ModuleLoader__.load({
 .dshFmAcct.isPending{border-style:dashed}
 .dshFmAcctName{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
 .dshFmAcctMeta{font-size:10.5px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}
+.dshFmCredit{font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-success-primary) 55%,transparent);color:var(--dsw-alias-state-success-primary);background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 12%,transparent);white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis}
 .dshFmAcctActs{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap}
 .dshFmModelList{display:flex;flex-direction:column;gap:4px;max-height:238px;overflow:auto;padding-right:2px}
 .dshFmModelRow{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:9px;background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 55%,transparent);transition:background .18s ease}
@@ -855,6 +904,11 @@ window.__ModuleLoader__.load({
 .dshFmSkeleton{border-radius:11px;background:linear-gradient(90deg,color-mix(in srgb,var(--dsw-alias-bg-layer-1) 70%,transparent),color-mix(in srgb,var(--dsw-alias-bg-layer-2) 70%,transparent),color-mix(in srgb,var(--dsw-alias-bg-layer-1) 70%,transparent));background-size:220% 100%;animation:dshFmShimmer 1.5s ease-in-out infinite}
 @keyframes dshFmShimmer{from{background-position:120% 0}to{background-position:-20% 0}}
 .dshFmKpi{display:flex;flex-direction:column;gap:3px;padding:13px 15px;border-radius:15px}
+.dshFmStack{display:flex;flex-direction:column;gap:10px}
+.dshFmSeg{display:inline-flex;padding:3px;border-radius:11px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l1) 80%,transparent);background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 62%,transparent)}
+.dshFmSegBtn{font:inherit;font-size:11.5px;font-weight:600;padding:4px 11px;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;white-space:nowrap}
+.dshFmSegBtn.isOn{color:var(--dsw-alias-label-primary);background:linear-gradient(150deg,color-mix(in srgb,var(--dsw-alias-bg-layer-3) 92%,transparent),color-mix(in srgb,var(--dsw-alias-bg-layer-2) 88%,transparent))}
+.dshFmSegBtn.isOff{opacity:.45;cursor:not-allowed}
 .dshFmKpiRow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .dshFmKpi.isWarn .dshFmKpiValue{color:var(--dsw-alias-state-warn-primary)}
 .dshFmKpiLabel{font-size:10.5px;letter-spacing:.2px;color:var(--dsw-alias-label-tertiary)}
@@ -1692,6 +1746,43 @@ window.__ModuleLoader__.load({
      * switching tabs and back never discards unsaved text or re-requests what
      * is already on screen.
      */
+    /** Which channels have credits worth reading, and whether they can be claimed.
+     *  The owner's own map: a channel absent from it has nothing to read, and
+     *  asking anyway only earns an error per account. */
+    const CHANNEL_CREDITS = {
+      codearts: { claim: true },
+      buddy: { claim: true, status: true },
+      workbuddy: {},
+      lobsterai: { claim: true },
+      qoder: { claim: true },
+      qodercn: { claim: true },
+      trae: { claim: true },
+      cline: { unit: 'dollars' },
+      loomy: { claim: true },
+      raccoon: {},
+      minimax: { claim: true, status: true },
+      zcode: { claim: true, unit: 'tokens' },
+      gemini: { unit: 'quota', quota: true }
+    }
+
+    /** Read a balance: a plain number, or the pack's package breakdown. */
+    function balanceText (entry, capability, t) {
+      const balance = entry?.balance
+      if (balance === null || balance === undefined) return entry?.error ?? t('accounts.balanceUnavailable')
+      if (typeof balance === 'number') {
+        return capability?.unit === 'dollars' ? `${balance.toLocaleString()}` : formatNumber(balance)
+      }
+      if (capability?.quota === true) {
+        const packages = Array.isArray(balance.packages) ? balance.packages : []
+        return packages.length === 0
+          ? '—'
+          : packages.map((pack) => `${pack.name} ${Math.round(Number(pack.remaining) || 0)}%`).join(' · ')
+      }
+      const total = Number(balance.total)
+      if (!Number.isFinite(total)) return '—'
+      return capability?.unit === 'tokens' ? `${formatNumber(total)} token` : formatNumber(total)
+    }
+
     /* ── 白嫖模型接入：channel pack 的账号与模型 ──────────────────────────────
        The accounts and the per-provider model blacklist do NOT live in
        dsh-our-free-model: it absorbed the pack and reaches it over the Host's
@@ -1754,6 +1845,9 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = React.useState('')
       const [note, setNote] = React.useState('')
       const [login, setLogin] = React.useState(null)
+      const [credits, setCredits] = React.useState(null)
+      const [claim, setClaim] = React.useState(null)
+      const capability = CHANNEL_CREDITS[channel.id]
       const accounts = status?.accounts ?? {}
       const catalogue = status?.models ?? {}
       const connected = (accounts.enabled ?? 0) > 0
@@ -1788,7 +1882,18 @@ window.__ModuleLoader__.load({
           const value = await bridge('model.list', { provider: channel.id })
           setModels(value?.models ?? [])
         }
+        if (next === 'credits' && credits === null && bridge !== null && capability !== undefined) {
+          const value = await bridge('credits.balances', { provider: channel.id }, 90_000)
+          setCredits(value?.accounts ?? [])
+        }
       }
+      const claimAll = async () => load('claim', async () => {
+        if (bridge === null) throw new Error(t('accounts.noBridge'))
+        const value = await bridge('credits.claimAll', { provider: channel.id }, 90_000)
+        setClaim(value?.summary ?? null)
+        const fresh = await bridge('credits.balances', { provider: channel.id }, 90_000)
+        setCredits(fresh?.accounts ?? [])
+      })
       const login2 = async () => load('login', async () => {
         if (bridge === null) throw new Error(t('accounts.noBridge'))
         // The pack's login is two-phase: `account.create` hands back a URL to
@@ -1810,11 +1915,30 @@ window.__ModuleLoader__.load({
                 React.createElement('span', { className: 'dshFmAcctMeta' },
                   account.enabled === false ? t('accounts.disabled') : t('accounts.enabled'),
                   expiry === null ? '' : ` · ${expiry}`),
+                capability !== undefined && credits !== null && React.createElement('span', { className: 'dshFmCredit' },
+                  balanceText((credits ?? []).find((entry) => entry.accountId === account.id), capability, t)),
                 React.createElement('div', { className: 'dshFmAcctActs' },
                   React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void call('refresh', 'account.refresh', { accountId: account.id }, 90_000).then(() => { setNote(t('accounts.refreshed')) }) } }, busy === 'refresh' ? t('accounts.working') : t('accounts.refresh')),
                   React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void call('toggle', 'account.update', { accountId: account.id, patch: { enabled: account.enabled === false } }) } }, account.enabled === false ? t('accounts.enable') : t('accounts.disable')),
                   React.createElement('button', { className: 'dshPlatformButton dshPlatformDanger', type: 'button', disabled: busy !== '', onClick: () => { void call('delete', 'account.delete', { accountId: account.id }) } }, t('accounts.remove'))))
             }))
+      const creditRows = open !== 'credits' || capability === undefined
+        ? null
+        : credits === null
+          ? React.createElement('div', { className: 'dshFmSkeleton', style: { minHeight: 44 } })
+          : React.createElement('div', { className: 'dshFmAcctList' },
+            claim !== null && React.createElement('p', { className: 'dshPlatformNote' },
+              t('accounts.claimed', {
+                claimed: claim.claimed ?? 0,
+                already: claim['already-claimed'] ?? 0,
+                inactive: claim.inactive ?? 0,
+                failed: claim.failed ?? 0
+              })),
+            credits.length === 0
+              ? React.createElement('p', { className: 'dshPlatformNote' }, t('accounts.none'))
+              : credits.map((entry) => React.createElement('div', { className: 'dshFmAcct', key: entry.accountId },
+                React.createElement('span', { className: 'dshFmAcctName' }, entry.nickname ?? entry.accountId),
+                React.createElement('span', { className: 'dshFmCredit' }, balanceText(entry, capability, t)))))
       const modelRows = open !== 'models'
         ? null
         : models === null
@@ -1844,10 +1968,51 @@ window.__ModuleLoader__.load({
           React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void call('provider', 'provider.setEnabled', { provider: channel.id, enabled: closed || !connected }) } }, closed || !connected ? t('accounts.openAll') : t('accounts.closeAll')),
           React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void login2() } }, busy === 'login' ? t('accounts.working') : t('accounts.add')),
           React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void fold('accounts') } }, `${t('accounts.foldAccounts')}${accounts.total === undefined ? '' : ` (${accounts.total})`}`),
-          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void fold('models') } }, `${t('accounts.foldModels')}${catalogue.total === undefined ? '' : ` (${catalogue.total})`}`)),
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void fold('models') } }, `${t('accounts.foldModels')}${catalogue.total === undefined ? '' : ` (${catalogue.total})`}`),
+          capability !== undefined && React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void fold('credits') } }, t('accounts.foldCredits')),
+          capability?.claim === true && open === 'credits' && React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void claimAll() } }, busy === 'claim' ? t('accounts.working') : t('accounts.claim'))),
         open !== null && React.createElement('div', { className: 'dshFmFold' },
           accountRows,
-          modelRows))
+          modelRows,
+          creditRows))
+    }
+
+    function AutoCheckin ({ t, bridge, onChanged }) {
+      const [state, setState] = React.useState(null)
+      const [busy, setBusy] = React.useState(false)
+      const [error, setError] = React.useState('')
+      React.useEffect(() => {
+        let alive = true
+        bridge('usage.autoCheckin', {})
+          .then((value) => { if (alive) setState(value?.autoCheckin ?? null) })
+          .catch((failure) => { if (alive) setError(messageOf(failure)) })
+        return () => { alive = false }
+      }, [bridge])
+      if (state === null) return null
+      const flip = async (enabled) => {
+        setBusy(true)
+        setError('')
+        try {
+          const value = await bridge('usage.autoCheckin', { enabled })
+          setState(value?.autoCheckin ?? state)
+          await onChanged()
+        } catch (failure) {
+          setError(messageOf(failure))
+        } finally {
+          setBusy(false)
+        }
+      }
+      const last = Number.isFinite(state.lastAt) ? new Date(state.lastAt).toLocaleString() : null
+      return React.createElement(Card, { title: t('accounts.autoCheckin') },
+        React.createElement(SwitchRow, {
+          checked: state.enabled === true,
+          label: t('accounts.autoCheckinSwitch'),
+          hint: t('accounts.autoCheckinHint'),
+          disabled: busy,
+          onChange: (checked) => { void flip(checked) }
+        }),
+        error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, error),
+        last !== null && React.createElement('p', { className: 'dshPlatformMeta' }, t('accounts.autoCheckinLast', { at: last, result: state.lastResult ?? '—' })))
     }
 
     function AccountsPage ({ t, ctx }) {
@@ -1890,6 +2055,7 @@ window.__ModuleLoader__.load({
       return React.createElement('div', { className: 'dshPlatform' },
         React.createElement('p', { className: 'dshPlatformIntro' }, t('accounts.intro')),
         error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, error),
+        bridge !== null && React.createElement(AutoCheckin, { t, bridge, onChanged: reload }),
         React.createElement('div', { className: 'dshPlatformBar' },
           React.createElement('button', { className: 'dshPlatformButton', type: 'button', onClick: reload }, t('accounts.refresh'))),
         React.createElement('div', { className: 'dshFmChanWrap' }, cards))
@@ -2541,13 +2707,127 @@ window.__ModuleLoader__.load({
           React.createElement(Card, { title: t('aggregate.providers', { count: shown.length }) }, rows)))
     }
 
+    /* ── 渠道用量：pack 自己的账本 ────────────────────────────────────────────
+       `/stats` is the owner's own accounting and covers its free lane only.
+       The thirteen channels keep a second, persisted ledger inside the pack:
+       ninety days by channel → provider → account → model, plus the recent
+       per-call entries. Same bridge as the account page, different data. */
+
+    function usePackLedger (ctx) {
+      const [state, setState] = React.useState({ status: 'loading', history: null, snapshot: null, error: '' })
+      const [nonce, setNonce] = React.useState(0)
+      const bridge = React.useMemo(() => packBridge(ctx), [ctx])
+      React.useEffect(() => {
+        let alive = true
+        if (bridge === null) {
+          setState({ status: 'absent', history: null, snapshot: null, error: '' })
+          return undefined
+        }
+        setState((current) => ({ ...current, status: 'loading', error: '' }))
+        Promise.all([
+          bridge('usage.tokenLedgerHistory', { sinceDays: 90 }),
+          bridge('usage.tokenLedger', { limit: 500 })
+        ])
+          .then(([history, snapshot]) => {
+            if (!alive) return
+            setState({ status: 'ready', history: history?.history ?? [], snapshot: snapshot?.snapshot ?? null, error: '' })
+          })
+          .catch((failure) => { if (alive) setState({ status: 'error', history: null, snapshot: null, error: messageOf(failure) }) })
+        return () => { alive = false }
+      }, [bridge, nonce])
+      return { ...state, reload: () => setNonce((value) => value + 1) }
+    }
+
+    const ledgerTokens = (totals) => (totals.inputTokens ?? 0) + (totals.outputTokens ?? 0)
+
+    /** One channel, folded down to its providers, accounts and models. */
+    function ledgerChannel ({ t, channel, open, onToggle }) {
+      const totals = channel.totals ?? {}
+      const isOpen = open === channel.channel
+      const providers = Array.isArray(channel.providers) ? channel.providers : []
+      return React.createElement('div', { className: 'dshFmChain' },
+        React.createElement('div', { className: 'dshFmChainHead' },
+          React.createElement('code', { className: 'dshFmId' }, channel.channel),
+          React.createElement(Pill, { tone: 'strong' }, `${formatNumber(totals.requests ?? 0)} ${t('lane.requests')}`),
+          React.createElement(Pill, null, `${formatNumber(ledgerTokens(totals))} ${t('dash.tokens')}`),
+          (totals.cacheReadTokens ?? 0) > 0 && React.createElement(Pill, null, `${t('lane.cache')} ${formatNumber(totals.cacheReadTokens)}`),
+          (totals.errors ?? 0) > 0 && React.createElement(Pill, { tone: 'danger' }, `${t('lane.errors')} ${totals.errors}`),
+          typeof totals.avgTps === 'number' && React.createElement(Pill, null, `${totals.avgTps} ${t('dash.columnTps')}`),
+          typeof totals.avgTtftMs === 'number' && React.createElement(Pill, null, `${formatNumber(totals.avgTtftMs)} ms`)),
+        React.createElement('div', { className: 'dshFmBar' },
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', onClick: onToggle }, `${t('lane.fold')} (${providers.length})`)),
+        isOpen && React.createElement('div', { className: 'dshFmFold' }, providers.map((provider) => {
+          const providerTotals = provider.totals ?? {}
+          return React.createElement('div', { className: 'dshFmModelRow', key: provider.provider },
+            React.createElement('code', { className: 'dshFmId' }, provider.provider),
+            React.createElement(Pill, { tone: 'strong' }, formatNumber(ledgerTokens(providerTotals))),
+            React.createElement('span', { className: 'dshFmAcctMeta' }, `${formatNumber(providerTotals.requests ?? 0)} ${t('lane.requests')}`),
+            (providerTotals.errors ?? 0) > 0 && React.createElement(Pill, { tone: 'danger' }, `${providerTotals.errors} ${t('lane.errors')}`),
+            React.createElement('div', { className: 'dshFmModelList' },
+              (provider.accounts ?? []).map((account) => (account.models ?? []).map((model) => React.createElement('div', { className: 'dshFmModelRow', key: `${account.accountId}/${model.model}` },
+                React.createElement('code', { className: 'dshFmId' }, `${account.accountId === '-' ? '' : `${account.accountId} · `}${model.model}`),
+                React.createElement('span', { className: 'dshFmAcctMeta' }, `${formatNumber(model.inputTokens ?? 0)} / ${formatNumber(model.outputTokens ?? 0)}`),
+                (model.cacheReadTokens ?? 0) > 0 && React.createElement('span', { className: 'dshFmAcctMeta' }, `↦ ${formatNumber(model.cacheReadTokens)}`)))))
+          )
+        })))
+    }
+
+    function ChannelUsage ({ t, ledger }) {
+      const [open, setOpen] = React.useState(null)
+      if (ledger.status === 'absent') return null
+      if (ledger.status === 'error') {
+        return React.createElement(Card, { title: t('lane.title') },
+          React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('lane.failed', { message: ledger.error })),
+          React.createElement('div', { className: 'dshFmBar' },
+            React.createElement('button', { className: 'dshPlatformButton', type: 'button', onClick: ledger.reload }, t('accounts.refresh'))))
+      }
+      if (ledger.status === 'loading' || ledger.snapshot === null) {
+        return React.createElement(Card, { title: t('lane.title') },
+          React.createElement('p', { className: 'dshPlatformNote', role: 'status' }, t('lane.loading')))
+      }
+      const channels = Array.isArray(ledger.snapshot.channels) ? ledger.snapshot.channels : []
+      const totals = ledger.snapshot.totals ?? {}
+      const days = Array.isArray(ledger.history) ? ledger.history : []
+      const peak = days.reduce((max, day) => Math.max(max, ledgerTokens(day.totals ?? {})), 0)
+      const cards = channels.length === 0
+        ? React.createElement('p', { className: 'dshPlatformNote' }, t('lane.empty'))
+        : React.createElement('div', { className: 'dshFmStack' }, channels.map((channel) => React.createElement(ledgerChannel, {
+          key: channel.channel,
+          t,
+          channel,
+          open,
+          onToggle: () => setOpen(open === channel.channel ? null : channel.channel)
+        })))
+      const series = days.length === 0
+        ? null
+        : React.createElement('div', { className: 'dshFmStack' }, days.map((day) => React.createElement('div', { className: 'dshFmChain', key: day.day },
+          React.createElement('div', { className: 'dshFmChainHead' },
+            React.createElement('code', { className: 'dshFmId' }, day.day),
+            React.createElement(Pill, { tone: 'strong' }, `${formatNumber(ledgerTokens(day.totals ?? {}))} ${t('dash.tokens')}`),
+            React.createElement(Pill, null, `${formatNumber(day.totals?.requests ?? 0)} ${t('lane.requests')}`)),
+          React.createElement('div', { className: 'dshPlatformMeter', 'aria-hidden': 'true' },
+            React.createElement('div', { className: 'dshPlatformMeterFill', style: { width: `${peak > 0 ? Math.round((ledgerTokens(day.totals ?? {}) / peak) * 100) : 0}%` } })))))
+      return React.createElement(React.Fragment, null,
+        React.createElement(Card, { title: t('lane.title') },
+          React.createElement('p', { className: 'dshPlatformIntro' }, t('lane.intro')),
+          React.createElement('div', { className: 'dshFmKpiRow' },
+            React.createElement(Kpi, { key: 'req', label: t('lane.requests'), value: formatNumber(totals.requests ?? 0), sub: `${t('lane.reported')} ${formatNumber(totals.reportedRequests ?? 0)}` }),
+            React.createElement(Kpi, { key: 'in', label: t('dash.columnInput'), value: formatNumber(totals.inputTokens) }),
+            React.createElement(Kpi, { key: 'out', label: t('dash.columnOutput'), value: formatNumber(totals.outputTokens) }),
+            React.createElement(Kpi, { key: 'cache', label: t('lane.cache'), value: formatNumber(totals.cacheReadTokens ?? 0), sub: t('lane.cacheHint') }),
+            React.createElement(Kpi, { key: 'err', label: t('lane.errors'), value: formatNumber(totals.errors ?? 0), tone: (totals.errors ?? 0) > 0 ? 'isWarn' : '' })),
+          cards),
+        series !== null && React.createElement(Card, { title: t('lane.byDay') }, series))
+    }
+
     /* ── 数据看板 ──────────────────────────────────────────────────────────── */
     function percentOf (part, whole) {
       return typeof whole === 'number' && whole > 0 ? `${Math.round((part / whole) * 100)}%` : '—'
     }
 
-    function DashboardPage ({ t }) {
+    function DashboardPage ({ t, ctx }) {
       const state = useOwner(['/stats'])
+      const ledger = usePackLedger(ctx)
       const stats = state.data === null ? null : state.data[0] ?? {}
       const grand = stats === null ? null : stats.grand ?? {}
       const rows = stats === null ? [] : stats.models ?? []
@@ -2628,20 +2908,40 @@ window.__ModuleLoader__.load({
           kpis.length > 0 && React.createElement('div', { className: 'dshFmKpiRow' }, kpis),
           stats !== null && stats.requestFailuresEstimated === true && React.createElement('p', { className: 'dshPlatformMeta' }, t('dash.estimated')),
           table !== null && React.createElement(Card, { title: t('dash.byModel') }, table),
-          React.createElement(Card, { title: t('dash.byDay') }, dayRows)))
+          React.createElement(Card, { title: t('dash.byDay') }, dayRows),
+          React.createElement(ChannelUsage, { t, ledger })))
     }
 
     /* ── 运行日志 ──────────────────────────────────────────────────────────── */
     const LOG_PAGE_SIZES = [20, 50, 100]
 
-    function LogPage ({ t }) {
+    function LogPage ({ t, ctx }) {
       const state = useOwner(['/stats'])
+      const pack = usePackLedger(ctx)
+      const [lane, setLane] = React.useState('owner')
       const [onlyFailed, setOnlyFailed] = React.useState(false)
       const [model, setModel] = React.useState('')
       const [size, setSize] = React.useState(20)
       const [page, setPage] = React.useState(1)
       const stats = state.data === null ? null : state.data[0] ?? {}
-      const samples = stats === null ? [] : stats.samples ?? []
+      // Two lanes that never overlap: the owner's samples are its own free
+      // lane, the pack's entries are the channel accounts. Reading only one of
+      // them is how half the traffic stays invisible.
+      const samples = lane === 'owner'
+        ? (stats === null ? [] : stats.samples ?? [])
+        : (pack.snapshot?.entries ?? []).map((entry) => ({
+          at: entry.at,
+          model: entry.model,
+          ok: entry.error === undefined,
+          input: entry.inputTokens,
+          output: entry.outputTokens,
+          ttftMs: entry.ttftMs,
+          tps: entry.tps,
+          decodeMs: undefined,
+          effort: '',
+          origin: entry.accountId === undefined || entry.accountId === '' ? entry.provider : `${entry.provider} · ${entry.accountId}`,
+          truncated: entry.usageReported !== true
+        }))
       const models = stats === null ? [] : (stats.models ?? []).map((row) => row.model)
       const filtered = samples.filter((row) => (onlyFailed ? row.ok !== true : true) && (model === '' || row.model === model))
       const pages = Math.max(1, Math.ceil(filtered.length / size))
@@ -2677,6 +2977,11 @@ window.__ModuleLoader__.load({
         React.createElement('div', { className: 'dshPlatform' },
           React.createElement('p', { className: 'dshPlatformIntro' }, t('log.intro')),
           React.createElement('div', { className: 'dshPlatformBar' },
+            React.createElement('div', { className: 'dshFmSeg', role: 'group', 'aria-label': t('log.lane') },
+              React.createElement('button', { className: lane === 'owner' ? 'dshFmSegBtn isOn' : 'dshFmSegBtn', type: 'button', 'aria-pressed': lane === 'owner', onClick: () => { setLane('owner'); setModel(''); setPage(1) } }, t('log.laneOwner')),
+              pack.status === 'absent'
+                ? React.createElement('button', { className: 'dshFmSegBtn isOff', type: 'button', disabled: true }, t('log.lanePack'))
+                : React.createElement('button', { className: lane === 'pack' ? 'dshFmSegBtn isOn' : 'dshFmSegBtn', type: 'button', 'aria-pressed': lane === 'pack', onClick: () => { setLane('pack'); setModel(''); setPage(1) } }, t('log.lanePack'))),
             React.createElement(SwitchRow, { checked: onlyFailed, label: t('log.onlyFailed'), onChange: (checked) => { setOnlyFailed(checked); setPage(1) } }),
             React.createElement('label', { className: 'dshPlatformField' },
               React.createElement('span', { className: 'dshPlatformMeta' }, t('log.filterModel')),

@@ -44,6 +44,18 @@ pack 有 183 个方法，我们只用这几个：
 | `model.list` | `{ provider }` | `{ models: [{ id, name, disabled, dead, isFree? }] }` |
 | `model.setDisabled` | `{ provider, modelId, disabled }` | — |
 | `provider.setEnabled` | `{ provider, enabled }` | `{ provider, enabled, models, accounts }` |
+| `credits.balances` | `{ provider, force? }` | `{ accounts: [{ accountId, nickname, balance, error? }] }`，`balance` 是数字或 `{ total, expiredTotal?, packages[] }` |
+| `credits.claimAll` | `{ provider }` | `{ results: [{ accountId, outcome: { kind } }], summary }`，`kind` ∈ claimed / already-claimed / inactive / failed |
+| `usage.autoCheckin` | 无载荷读，`{ enabled }` 写 | `{ autoCheckin: { enabled, lastAt, lastResult } }` |
+| `usage.tokenLedger` | `{ limit }` | `{ snapshot: { channels: [{ channel, providers: [{ provider, accounts: [{ accountId, models: [{ model, … }], totals }], totals }], totals, entries } } }` |
+| `usage.tokenLedgerHistory` | `{ sinceDays }` | `{ history: [{ day, channels, totals }], totals }`（落盘 90 天，进程内 500 条） |
+
+账本行的字段是 `requests / reportedRequests / inputTokens / outputTokens / cacheReadTokens /
+cacheWriteTokens / reasoningTokens / errors`，外加 `finalizeAverages` 算好的 `avgTtftMs` 与
+`avgTps`（样本为 0 时**不写这两个键**，所以读的时候要判空而不是当 0）。
+
+**两本账不能混**：`GET /api/our-free-model/stats` 只数插件自己的免费线路；13 个渠道账号的
+token 在 pack 的账本里，两者互不重叠。看板因此有两段，运行日志有一个「调用来源」切换。
 
 **桥只能读 `ctx.get('connection')`，不能读 `ctx.connection`。** 宿主只交出声明过的服务，
 未声明的属性访问会在渲染进程抛错并带走整个 client bundle（见上面那条 inject 规矩）；
@@ -158,6 +170,35 @@ powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1
 
 改完代码必须重跑脚本。宿主插件是热加载的，但 profile 插件不是。
 
+### 正在跑的那套 profile 不一样，而且不能对它用 pnpm
+
+本机有两套 harness：
+
+| 安装 | profile | 说明 |
+| --- | --- | --- |
+| `E:\ai\DSH Desktop` | `%APPDATA%\dsh-desktop\harness\profiles\web` | 遗留，脚本默认打这里 |
+| `E:\ai\DeepSeek Harness` | `C:\Users\<user>\.dsh\profiles\desktop` | **实际在跑的那套**，harness home 是 `~/.dsh` |
+
+两边共用 GUI 端口 19387，但各自只认自己的 profile —— 往错的那套装，路由全是 404。
+
+往**活着的** profile（`~/.dsh/profiles/desktop`）里跑 `pnpm install` 会毁掉它的安装树：
+pnpm 11.15.1 打完 `Packages: +N -2` 就报 `Worker pnpm#8 exited with code 1`
+（`--ignore-scripts`、`--reporter=ndjson` 都复现，日志里只有
+`Failed to load the ES module: .../pnpm/dist/worker.js` 这类噪音，给不出真正原因），
+副作用是把两个 `file:` 插件从 `node_modules` 里删掉、把 `.pnpm` 虚拟 store 清空。
+
+活 profile 的正确装法（完全不用 pnpm）：
+
+```powershell
+$d = "$env:USERPROFILE\.dsh\profiles\desktop"
+Copy-Item "$d\plugins\dsh-localcoding-mcp" "$d\node_modules\dsh-localcoding-mcp" -Recurse -Force
+# package.json 里要有 dependencies 的 file: 条目 + dsh.profile.bundles 的一行
+```
+
+再让 `plugin_manager set_bundle` 走一次 `enabled=false` → `enabled=true`（返回
+`application:"applied"`）即刻生效，不用重启。但**它不清 Node 的 ESM 模块缓存**：
+改了 server 代码还是得重启应用，改 client 代码刷新页面就够。
+
 ## 三条实测出来的硬约束
 
 **`file:` 依赖必须指向 profile 内部。** 跨目录的 `file:` 依赖会被宿主当成 profile 内的相对目录去
@@ -220,6 +261,9 @@ profile bundle "<name>" declares no dsh.bundle in its package.json
 ```powershell
 node .\test\platform-client.test.mjs .\dsh-desktop-platform\client.js
 node .\test\archive-delete.test.mjs
+node .\test\localcoding-client.test.mjs .\dsh-localcoding-mcp\client.js
+node .\test\localcoding-process.test.mjs
+$env:LCM_URL = 'http://127.0.0.1:3011/mcp'; node .\test\localcoding-server.test.mjs
 ```
 
 两个都不需要装依赖：
@@ -232,17 +276,95 @@ node .\test\archive-delete.test.mjs
   （模型名、成功率、`ms` 延迟、截断标记、已验证标记、登录名），而不只是「没崩」。
 - `archive-delete.test.mjs` 用一个带状态的迷你 React 挂载真实的设置页，**真的去点按钮**：
   列表渲染、逐行删除的确认框与宿主调用、失败时的错误文案、勾选全选后的批量删除与调用顺序。
+- `localcoding-client.test.mjs` 用假的 `window` / `document` / `react` 跑一遍 `apply()`，
+  断言中英 key 齐平、每个 `ctx.<name>` 都在 `inject` 里声明过、样式里没有硬编码色值。
+- `localcoding-process.test.mjs` 断言端口挑选、认领已在跑的服务（不 spawn 也不误杀）、
+  真实 spawn → health → stop、`autoStart=false` 时报错而不是擅自启动、codex 路径优先级。
+- `localcoding-server.test.mjs` 打真实服务器：注册出 40 个 `lcm_*`、
+  成功调用取到 `data.root`、渲染出 content、失败路径按宿主要求 throw、中止能传导。
+
+**`lcm_*` 已实测接入活着的宿主**：`GET /dsh-localcoding-mcp/status` 返回 200 且
+`tools.toolCount = 40`；`lcm_get_workspace_info` / `lcm_write_file` / `lcm_read_file` /
+`lcm_delete_file` 在真实对话里跑通；`codex mcp add` 之后 `~/.codex/config.toml` 里出现
+`[mcp_servers.dsh-localcoding]` + `url = "http://127.0.0.1:3011/mcp"`，且 `codex mcp list`
+的 HTTP 表里显示为 enabled。
+
+## 本地编码 MCP（`dsh-localcoding-mcp`）
+
+把 `E:\ai\aiassistant\plugins\LocalCodingMCP_v0_3` 的 .NET 8 MCP 服务器接进宿主，双向。
+
+### 分层
+
+| 文件 | 职责 |
+| --- | --- |
+| `server/mcp-client.js` | streamable-HTTP 的 MCP 客户端（`McpHttpClient`）：initialize / tools/list / tools/call |
+| `server/process.js` | `LocalCodingMCP.exe` 的生命周期：端口挑选、认领已在跑的服务、spawn、health、stop |
+| `server/bridge.js` | 把 MCP 工具表翻译成宿主 `tools.register` 的 `ToolDefinition` |
+| `server/codex.js` | 反向：`lcm_codex_task` 委派给 `codex.exe`，外加 `codex mcp add/register` |
+| `server/http.js` | 设置页用的 loopback 路由 |
+| `client.js` | 设置页（前端必须单文件，见上文） |
+
+宿主没有 `mcp` 服务，也没有 `codex` 服务：唯一的接缝是 **`ctx.tools.register`**。
+`mcpResources` 只管 MCP 的 resources，不管 tools。
+
+### 为什么工具名要加 `lcm_` 前缀
+
+MCP 的 `read_file` / `write_file` / `search_code` / `apply_patch` 与宿主原生的
+`read` / `write` / `grep` / `edit` 撞名。`bridge.js` 给所有工具加 `PREFIX = 'lcm_'`
+（`lcm_read_file`），既避开冲突，也让人一眼看出这批工具来自 MCP。
+
+### 四个协议坑
+
+**响应是 SSE，不是 JSON。** `POST /mcp` 返回 `Content-Type: text/event-stream`，
+正文是 `event: message\ndata: {json}`，会话在响应头 `Mcp-Session-Id` 上。
+**不要开 `GET /mcp`** —— 那是一条永不结束的长连接，`ReadToEnd()` 会永久挂住。
+
+**成功时没有 `isError`。** `tools/call` 成功的结果里根本没有这个字段，缺失即成功；
+`result.content[0].text` 是一个**需要 `JSON.parse` 的字符串**。
+
+**Schema 要削。** MCP 的 `inputSchema` 带 `$schema` / `additionalProperties` / `$ref`，
+宿主只认子集 `type/oneOf/properties/required/additionalProperties/items/enum/const`
++ 注解 `description/title/default/examples`，多一个 key 就
+`unsupported JSON schema: ... is not a supported keyword`。`narrowSchema()` 负责削，
+没声明类型的工具退化成单个自由格式的 `arguments: string`。
+
+**`execute` 返回裸值，失败靠 throw。** 宿主自己做
+`validateJsonSchemaValue(tool.output.schema, value)` 再调 `output.render(args, value)`；
+`execute` 里返回 `{isError:true}` 是错的写法，throw 才会被宿主转成 `Error: <message>`。
+
+### 两个真 bug（都是自测抓到的）
+
+`import setTimeout from 'node:timers/promises'` 会**遮蔽全局 `setTimeout`**，
+于是 `setTimeout(() => child.kill('SIGKILL'), 4000)` 抛
+`TypeError: setTimeout is not a function` —— 停止进程永远走不到 SIGKILL 那一步。
+`process.js` 与 `codex.js` 都中过招，改成 `import { setTimeout as sleep }`。
+
+`isPlainObject(signal)` 当作信号的有效性检查是**错的**：`AbortSignal` 也是
+`typeof 'object'` 的普通对象，检查永远为真，于是调用方的 signal 被静默丢弃，
+工具该中止时照跑到底（实测 1.5 秒中止、25 秒才返回）。
+正确做法是先鸭子类型：`typeof signal?.addEventListener === 'function'`。
+
+### 未登录的 Codex 会静默挂死
+
+`codex exec` 在没有账号时既不输出也不退出（实测 120 秒无任何输出）。
+所以 `buildCodexToolDefinition` 在跑之前先做一次 `codex login status` 预检
+（60 秒缓存一次），失败就抛
+`codex cannot run: codex is installed but not logged in — run \`codex login\``，
+而不是让调用方等到超时。
+（预检失败本身不拦截——`probeCodex(...).catch(() => undefined)`——以免探测本身出故障时挡住已登录的 Codex。）
 
 ## 已验证 / 未验证
 
-**已验证**（DSH Desktop 0.11.1，harness 0.2.0-rc.2）：
+**已验证**（宿主 `E:\ai\DeepSeek Harness`，harness 0.2.0-rc.2）：
 
 - 两个自检脚本全过（含 4 个页签、8 个页内页面的路由与渲染断言）。
 - `install-to-profile.ps1` 实测执行通过，旧依赖与改名残留已从 profile 摘除。
 - 服务端路由用 loopback 自检：命中即 200。
 
 **未验证**：客户端在应用里的真实观感（侧边栏排序、页签切换、记忆编辑器切页不丢稿、归档删除的
-确认框、4 个新页签在真实数据下的排版）——需要在 DSH Desktop 里点一遍。
+确认框、4 个新页签在真实数据下的排版）——需要在应用里点一遍。
+`lcm_codex_task` 的**成功路径**也还没跑过：本机 Codex CLI 未登录，
+只验证了它会明确报「未登录」而不是挂死。
 
 ## 相关文档
 
