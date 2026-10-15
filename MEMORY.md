@@ -17,3 +17,5 @@
 - 2026-10-15 slot 记录的命名空间在 `entry.locale`（与 component/inject 同级），`entry.options` 里只有 key/id/order/label/priority；读错会静默退化成回显 key。
 - 2026-10-15 挂载别人的设置页做不到「只显示其中几页」：页签条是对方组件内部的 state，外部无法隐藏单个页签，用户因此要求删掉「免费模型」那一页。结论：这 4 页改为自建前端，只读它的 `/api/our-free-model/*`。
 - 2026-10-15 综合平台现有 7 个页签：用量统计 / 归档历史 / 记忆系统 + FreeModel 的 插件升级 / 省 Token / 网关设置 / 路由（后 4 个自建，共 201 个中英 key）。
+- 2026-10-15 仓库已推到 `https://github.com/TiaYahng/dsh-plugins`（公开，主分支 `main`，本地 master 已改名）。本机没有 `gh` CLI，但 Windows 凭据管理器里存着 github.com 的 40 位 token：`git credential fill` 能取到，可直接用它调 GitHub API（建仓库、设描述）。
+- 2026-10-15 全局 git 配置里第二条 `credential.helper`（`!".../PortableGit/.../git-credential-manager.exe"`）指向不存在的文件，每次 push 会报一次 `store: ... No such file or directory`——是噪音，推送本身照样成功。
