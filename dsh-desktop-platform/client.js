@@ -57,9 +57,13 @@ window.__ModuleLoader__.load({
       { id: 'archive', label: 'tab.archive' },
       { id: 'memory', label: 'tab.memory' },
       { id: 'upgrade', label: 'tab.upgrade' },
+      { id: 'eac', label: 'tab.eac' },
+      { id: 'aggregate', label: 'tab.aggregate' },
       { id: 'saver', label: 'tab.saver' },
-      { id: 'gateway', label: 'tab.gateway' },
-      { id: 'routing', label: 'tab.routing' }
+      { id: 'routing', label: 'tab.routing' },
+      { id: 'dashboard', label: 'tab.dashboard' },
+      { id: 'logs', label: 'tab.logs' },
+      { id: 'gateway', label: 'tab.gateway' }
     ]
 
     const en = {
@@ -263,7 +267,103 @@ window.__ModuleLoader__.load({
       "routing.disable": 'Disable',
       "routing.enabled": 'Enabled',
       "routing.disabled": 'Disabled',
-      "routing.delete": 'Delete'
+      "routing.delete": 'Delete',
+"tab.eac": 'FreeModel · EAC models',
+      "tab.aggregate": 'FreeModel · Aggregate',
+      "tab.dashboard": 'FreeModel · Dashboard',
+      "tab.logs": 'FreeModel · Call log',
+      "eac.intro": 'The EAC lane is the co-paid channel: it answers with a GitHub identity you authorise once, and the plugin holds the token — this page only starts the flow, polls it and signs out.',
+      "eac.laneReady": 'EAC lane configured',
+      "eac.laneMissing": 'EAC lane not configured',
+      "eac.laneMissingHint": 'No EAC endpoint is configured in the plugin, so there is nothing to sign in to.',
+      "eac.authorized": 'Signed in',
+      "eac.unauthorized": 'Not signed in',
+      "eac.required": 'required by this endpoint',
+      "eac.configured": 'GitHub app installed',
+      "eac.starred": 'starred',
+      "eac.reason": 'The endpoint said: {reason}',
+      "eac.repo": 'Repository: {repo}',
+      "eac.login": 'Sign in with GitHub',
+      "eac.logout": 'Sign out',
+      "eac.working": 'Working…',
+      "eac.cancel": 'Cancel sign-in',
+      "eac.pendingTitle": 'Waiting for GitHub',
+      "eac.pendingHint": 'Open the link below, authorise the app, then come back here. This page checks the result every two seconds.',
+      "eac.signedIn": 'Signed in as {login}.',
+      "eac.signedOut": 'Signed out.',
+      "eac.startFailed": 'The sign-in could not start: {reason}',
+      "eac.pollFailed": 'The sign-in did not finish: {reason}',
+      "eac.failed": 'EAC request failed: {message}',
+      "aggregate.intro": 'The aggregate lane calls providers you bring yourself: paste a key per provider, pick the models you want, and every published model id stays under your own key. The key is stored by the plugin, never here.',
+      "aggregate.search": 'Filter providers',
+      "aggregate.providers": 'Providers ({count})',
+      "aggregate.configure": 'Configure',
+      "aggregate.on": 'on',
+      "aggregate.off": 'off',
+      "aggregate.verified": 'verified',
+      "aggregate.empty": 'The owner reported no providers at all.',
+      "aggregate.noMatch": 'No provider matches that filter.',
+      "aggregate.editing": 'Configure {name}',
+      "aggregate.baseUrl": 'Base URL',
+      "aggregate.apiKey": 'API key',
+      "aggregate.keyPlaceholder": 'Leave empty to keep the stored key',
+      "aggregate.models": 'Model ids, comma or newline separated',
+      "aggregate.registryModels": '{count} model id(s) configured for this provider.',
+      "aggregate.enabled": 'Publish this provider',
+      "aggregate.enabledHint": 'A provider that is off contributes no models to the picker.',
+      "aggregate.save": 'Save',
+      "aggregate.saving": 'Saving…',
+      "aggregate.test": 'Test key',
+      "aggregate.discover": 'Discover models',
+      "aggregate.clearKey": 'Delete stored key',
+      "aggregate.remove": 'Remove provider',
+      "aggregate.working": 'Working…',
+      "aggregate.saved": 'Provider saved.',
+      "aggregate.removed": 'Provider removed.',
+      "aggregate.testOk": 'The provider answered with its model list.',
+      "aggregate.testFailed": 'The provider did not verify (status {status}).',
+      "aggregate.lastTestOk": 'Last verified {at}.',
+      "aggregate.lastTestFailed": 'Last check failed, {at}.',
+      "aggregate.discovered": 'Discovered models ({count})',
+      "aggregate.discoveredEmpty": 'The provider published no model list.',
+      "dash.intro": 'The owner’s own accounting: what actually went over the wire, folded per model and per day. It counts the calls the plugin made, not the sessions the host stored — the two rarely agree, and each is right about its own thing.',
+      "dash.calls": 'Calls',
+      "dash.turns": 'Turns',
+      "dash.success": 'Success',
+      "dash.tokens": 'Tokens',
+      "dash.saved": 'Saved',
+      "dash.estimated": 'Some of these figures are estimated: the plugin has no lifetime failure count of its own yet, so failures are derived from the per-model rows.',
+      "dash.byModel": 'By model',
+      "dash.byDay": 'Last 14 days',
+      "dash.empty": 'No traffic recorded in these 14 days.',
+      "dash.noModels": 'No model has been called yet.',
+      "dash.columnModel": 'Model',
+      "dash.columnInput": 'Input',
+      "dash.columnOutput": 'Output',
+      "dash.columnReasoning": 'Reasoning',
+      "dash.columnFailed": 'Failed',
+      "dash.columnTps": 'tok/s',
+      "dash.columnTtft": 'TTFT',
+      "log.intro": 'The last 200 calls the plugin made, newest first: what was asked, what came back, and how long it took. A row marked truncated or no-usage is a call the wire cut short — those are the rows to read when a turn vanished.',
+      "log.title": 'Recent calls',
+      "log.onlyFailed": 'Only failed calls',
+      "log.filterModel": 'Model',
+      "log.allModels": 'All models',
+      "log.pageSize": 'Per page',
+      "log.count": '{shown} of {total} calls · page {page} of {pages}',
+      "log.columnTime": 'Time',
+      "log.columnModel": 'Model',
+      "log.columnResult": 'Result',
+      "log.columnDecode": 'Decode',
+      "log.columnNotes": 'Notes',
+      "log.ok": 'ok',
+      "log.failed": 'failed',
+      "log.truncated": 'cut short',
+      "log.noUsage": 'no usage frame',
+      "log.empty": 'No call has been recorded yet.',
+      "log.noMatch": 'No call matches this filter.',
+      "log.prev": 'Previous',
+      "log.next": 'Next'
     }
 
 
@@ -468,7 +568,103 @@ window.__ModuleLoader__.load({
       "routing.disable": '停用',
       "routing.enabled": '已启用',
       "routing.disabled": '已停用',
-      "routing.delete": '删除'
+      "routing.delete": '删除',
+"tab.eac": 'FreeModel · EAC 模型',
+      "tab.aggregate": 'FreeModel · 聚合渠道',
+      "tab.dashboard": 'FreeModel · 数据看板',
+      "tab.logs": 'FreeModel · 运行日志',
+      "eac.intro": 'EAC 这条通道是「共付」路线：用 GitHub 身份授权一次，之后由插件保管凭据。本页只负责发起授权、轮询结果和退出。',
+      "eac.laneReady": 'EAC 通道已配置',
+      "eac.laneMissing": 'EAC 通道未配置',
+      "eac.laneMissingHint": '插件里没有配置 EAC 端点，无从登录。',
+      "eac.authorized": '已登录',
+      "eac.unauthorized": '未登录',
+      "eac.required": '该端点要求登录',
+      "eac.configured": '已安装 GitHub 应用',
+      "eac.starred": '已 star',
+      "eac.reason": '端点给出的原因：{reason}',
+      "eac.repo": '仓库：{repo}',
+      "eac.login": '用 GitHub 登录',
+      "eac.logout": '退出登录',
+      "eac.working": '处理中…',
+      "eac.cancel": '取消登录',
+      "eac.pendingTitle": '等待 GitHub 授权',
+      "eac.pendingHint": '打开下面的链接完成授权，然后回到本页；本页每两秒检查一次结果。',
+      "eac.signedIn": '已登录：{login}。',
+      "eac.signedOut": '已退出登录。',
+      "eac.startFailed": '无法发起登录：{reason}',
+      "eac.pollFailed": '登录没有完成：{reason}',
+      "eac.failed": 'EAC 请求失败：{message}',
+      "aggregate.intro": '聚合通道走你自己带来的服务商：给每个服务商粘一个 Key、勾选要用的模型，发布出去的模型 id 仍然用你自己的 Key 调用。Key 由插件保管，本页不留存。',
+      "aggregate.search": '筛选服务商',
+      "aggregate.providers": '服务商（{count}）',
+      "aggregate.configure": '配置',
+      "aggregate.on": '已启用',
+      "aggregate.off": '已停用',
+      "aggregate.verified": '已验证',
+      "aggregate.empty": '插件没有返回任何服务商。',
+      "aggregate.noMatch": '没有匹配的服务商。',
+      "aggregate.editing": '配置 {name}',
+      "aggregate.baseUrl": '接口地址',
+      "aggregate.apiKey": 'API Key',
+      "aggregate.keyPlaceholder": '留空表示保留已存的 Key',
+      "aggregate.models": '模型 id，逗号或换行分隔',
+      "aggregate.registryModels": '该服务商当前配置了 {count} 个模型 id。',
+      "aggregate.enabled": '发布这个服务商',
+      "aggregate.enabledHint": '停用的服务商不会向选择器贡献任何模型。',
+      "aggregate.save": '保存',
+      "aggregate.saving": '保存中…',
+      "aggregate.test": '测试 Key',
+      "aggregate.discover": '拉取模型列表',
+      "aggregate.clearKey": '删除已存 Key',
+      "aggregate.remove": '移除服务商',
+      "aggregate.working": '处理中…',
+      "aggregate.saved": '服务商已保存。',
+      "aggregate.removed": '服务商已移除。',
+      "aggregate.testOk": '服务端点返回了模型列表。',
+      "aggregate.testFailed": '服务端点未通过验证（状态 {status}）。',
+      "aggregate.lastTestOk": '上次验证通过：{at}。',
+      "aggregate.lastTestFailed": '上次检查失败：{at}。',
+      "aggregate.discovered": '拉到的模型（{count}）',
+      "aggregate.discoveredEmpty": '该服务端点没有发布模型列表。',
+      "dash.intro": '插件自己的账本：真正发出去的东西，按模型和按天折叠。它数的是插件发出的调用，不是宿主存储的会话——两者很少一致，各自都对各自的事。',
+      "dash.calls": '调用数',
+      "dash.turns": '轮次',
+      "dash.success": '成功率',
+      "dash.tokens": 'tokens',
+      "dash.saved": '节省',
+      "dash.estimated": '部分数字是估算的：插件自己还没有历史失败计数，失败数由按模型的行推出来。',
+      "dash.byModel": '按模型',
+      "dash.byDay": '最近 14 天',
+      "dash.empty": '这 14 天没有流量记录。',
+      "dash.noModels": '还没有模型被调用过。',
+      "dash.columnModel": '模型',
+      "dash.columnInput": '输入',
+      "dash.columnOutput": '输出',
+      "dash.columnReasoning": '推理',
+      "dash.columnFailed": '失败',
+      "dash.columnTps": 'tok/s',
+      "dash.columnTtft": '首字延迟',
+      "log.intro": '插件最近 200 次调用，最新的在最前：发了什么、回了多少、用了多久。标了「截断」或「无 usage」的行是链路中途断掉的调用——「那一轮怎么没了」要查的就是这些行。',
+      "log.title": '最近的调用',
+      "log.onlyFailed": '只看失败的调用',
+      "log.filterModel": '模型',
+      "log.allModels": '全部模型',
+      "log.pageSize": '每页条数',
+      "log.count": '{shown} / {total} 条 · 第 {page} / {pages} 页',
+      "log.columnTime": '时间',
+      "log.columnModel": '模型',
+      "log.columnResult": '结果',
+      "log.columnDecode": '解码耗时',
+      "log.columnNotes": '备注',
+      "log.ok": '成功',
+      "log.failed": '失败',
+      "log.truncated": '中途截断',
+      "log.noUsage": '无 usage 帧',
+      "log.empty": '还没有记录到任何调用。',
+      "log.noMatch": '没有符合筛选的调用。',
+      "log.prev": '上一页',
+      "log.next": '下一页'
     }
     const styles = `
 .dshPlatform{color:var(--dsw-alias-label-primary);flex-direction:column;gap:16px;display:flex}
@@ -540,6 +736,7 @@ window.__ModuleLoader__.load({
 .dshPlatformPill.warn{color:var(--dsw-alias-state-warning-primary,var(--dsw-alias-label-primary))}
 .dshPlatformPill.danger{color:var(--dsw-alias-state-error-primary)}
 .dshPlatformPill.off{opacity:.6}
+.dshPlatformTableWrap{overflow-x:auto}
 .dshPlatformChips{gap:6px;flex-wrap:wrap;display:flex}
 .dshPlatformList{color:var(--dsw-alias-label-primary);margin:0;padding-left:20px;font-size:12.5px;line-height:20px}
 .dshPlatformCode{background:var(--dsw-alias-bg-layer-2);border-radius:6px;color:var(--dsw-alias-label-primary);padding:2px 6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;word-break:break-all}
@@ -1382,9 +1579,13 @@ window.__ModuleLoader__.load({
           tabPanel(TABS[1], React.createElement(ArchivePanel, { t, host })),
           tabPanel(TABS[2], React.createElement(MemoryPanel, { t })),
           tabPanel(TABS[3], React.createElement(UpgradePage, { t })),
-          tabPanel(TABS[4], React.createElement(SaverPage, { t })),
-          tabPanel(TABS[5], React.createElement(GatewayPage, { t })),
-          tabPanel(TABS[6], React.createElement(RoutingPage, { t }))))
+          tabPanel(TABS[4], React.createElement(EacPage, { t })),
+          tabPanel(TABS[5], React.createElement(AggregatePage, { t })),
+          tabPanel(TABS[6], React.createElement(SaverPage, { t })),
+          tabPanel(TABS[7], React.createElement(RoutingPage, { t })),
+          tabPanel(TABS[8], React.createElement(DashboardPage, { t })),
+          tabPanel(TABS[9], React.createElement(LogPage, { t })),
+          tabPanel(TABS[10], React.createElement(GatewayPage, { t }))))
     }
     /* ── FreeModel：自建的四个页面 ───────────────────────────────────────────
        The state, credentials, ports and the model adapter all belong to the
@@ -1417,7 +1618,7 @@ window.__ModuleLoader__.load({
     })
 
     /** Load a fixed set of owner routes, with a manual reload. */
-    function useOwner (paths, token) {
+    function useOwner (paths) {
       const key = paths.join('|')
       const [state, setState] = React.useState({ status: 'loading', data: null, error: '', absent: false })
       const [nonce, setNonce] = React.useState(0)
@@ -1437,7 +1638,7 @@ window.__ModuleLoader__.load({
           })
         return () => { alive = false }
       }, [key, nonce])
-      return { ...state, reload: () => setNonce((value) => value + 1), setData: (data) => setState((current) => ({ ...current, data, status: 'ready' })) }
+      return { ...state, reload: () => setNonce((value) => value + 1) }
     }
 
     function OwnerShell ({ t, state, children }) {
@@ -1462,7 +1663,7 @@ window.__ModuleLoader__.load({
       return React.createElement('span', { className: tone === undefined ? 'dshPlatformPill' : `dshPlatformPill ${tone}` }, children)
     }
 
-    function SwitchRow ({ t, checked, label, hint, disabled, onChange }) {
+    function SwitchRow ({ checked, label, hint, disabled, onChange }) {
       return React.createElement('div', { className: 'dshPlatformSwitchRow' },
         React.createElement('input', {
           type: 'checkbox',
@@ -1489,7 +1690,7 @@ window.__ModuleLoader__.load({
     }
 
     function maskKey (text) {
-      if (text === t('owner.noKey')) return text
+      if (text === '（未设置）' || text === '(not set)') return text
       return text.length <= 8 ? '••••' : `••••${text.slice(-4)}`
     }
 
@@ -1513,34 +1714,34 @@ window.__ModuleLoader__.load({
           setBusy('')
         }
       }
+      const status = state.data === null ? null : state.data[0] ?? {}
+      const notes = status === null || typeof status.notes !== 'string' || status.notes === '' ? null : status.notes
+      const checked = status !== null && typeof status.checkedAt === 'number'
+      const latest = status !== null && typeof status.latest === 'string' && status.latest !== '' ? status.latest : null
+      const pills = []
+      if (status !== null) {
+        pills.push(React.createElement(Pill, { key: 'current', tone: 'strong' }, `${t('upgrade.current')}: ${status.current ?? '—'}`))
+        if (typeof status.installedVersion === 'string') pills.push(React.createElement(Pill, { key: 'installed' }, `${t('upgrade.installed')}: ${status.installedVersion}`))
+        if (latest !== null) pills.push(React.createElement(Pill, { key: 'latest' }, `${t('upgrade.latest')}: ${latest}`))
+        if (status.available === true) pills.push(React.createElement(Pill, { key: 'new', tone: 'warn' }, t('upgrade.available', { version: status.latest })))
+        if (status.available === false && latest !== null) pills.push(React.createElement(Pill, { key: 'ok', tone: 'ok' }, t('upgrade.upToDate')))
+        if (status.applying === true) pills.push(React.createElement(Pill, { key: 'applying', tone: 'warn' }, t('upgrade.applying')))
+        if (status.recoveryRequired === true) pills.push(React.createElement(Pill, { key: 'recovery', tone: 'danger' }, t('upgrade.recovery')))
+        if (typeof status.recoveryBackup === 'string' && status.recoveryBackup !== '') pills.push(React.createElement(Pill, { key: 'backup', tone: 'danger' }, `${t('upgrade.backup')}: ${status.recoveryBackup}`))
+        pills.push(React.createElement(Pill, { key: 'checked' }, `${t('upgrade.checkedAt')}: ${checked ? new Date(status.checkedAt).toLocaleString() : t('upgrade.never')}`))
+      }
+      const applyable = status !== null && status.available === true && status.applying !== true
       return React.createElement(OwnerShell, { t, state },
         React.createElement('div', { className: 'dshPlatform' },
           React.createElement('p', { className: 'dshPlatformIntro' }, t('upgrade.intro')),
-          state.data !== null && (() => {
-            const data = state.data[0] ?? {}
-            return React.createElement('div', { className: 'dshPlatformPills' },
-              React.createElement(Pill, { tone: 'strong' }, `${t('upgrade.current')}: ${data.current ?? '—'}`),
-              typeof data.installedVersion === 'string' && React.createElement(Pill, null, `${t('upgrade.installed')}: ${data.installedVersion}`),
-              typeof data.latest === 'string' && data.latest !== '' && React.createElement(Pill, null, `${t('upgrade.latest')}: ${data.latest}`),
-              data.available === true && React.createElement(Pill, { tone: 'warn' }, t('upgrade.available', { version: data.latest })),
-              data.available === false && data.latest !== '' && React.createElement(Pill, { tone: 'ok' }, t('upgrade.upToDate')),
-              data.applying === true && React.createElement(Pill, { tone: 'warn' }, t('upgrade.applying')),
-              data.recoveryRequired === true && React.createElement(Pill, { tone: 'danger' }, t('upgrade.recovery')),
-              React.createElement(Pill, null, `${t('upgrade.checkedAt')}: ${typeof data.checkedAt === 'number' ? new Date(data.checkedAt).toLocaleString() : t('upgrade.never')}`),
-              typeof data.recoveryBackup === 'string' && data.recoveryBackup !== '' && React.createElement(Pill, { tone: 'danger' }, `${t('upgrade.backup')}: ${data.recoveryBackup}`))
-          })(),
+          pills.length > 0 && React.createElement('div', { className: 'dshPlatformPills' }, pills),
           note !== '' && React.createElement('p', { className: 'dshPlatformNoteSuccess', role: 'status' }, note),
           error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error })),
           React.createElement('div', { className: 'dshPlatformBar' },
             React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void run('check', '/update/check', t('upgrade.checked'), 60_000) } }, busy === 'check' ? t('upgrade.checking') : t('upgrade.check')),
-            state.data !== null && state.data[0]?.available === true && React.createElement('button', {
-              className: 'dshPlatformButton dshPlatformDanger',
-              type: 'button',
-              disabled: busy !== '' || state.data[0].applying === true,
-              onClick: () => { void run('apply', '/update/apply', t('upgrade.applied'), 600_000) }
-            }, busy === 'apply' ? t('upgrade.applying') : t('upgrade.apply')),
+            applyable && React.createElement('button', { className: 'dshPlatformButton dshPlatformDanger', type: 'button', disabled: busy !== '', onClick: () => { void run('apply', '/update/apply', t('upgrade.applied'), 600_000) } }, busy === 'apply' ? t('upgrade.applying') : t('upgrade.apply')),
             React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void run('reload', '/reload', t('upgrade.reloaded'), 30_000) } }, busy === 'reload' ? t('upgrade.reloading') : t('upgrade.reload'))),
-          state.data !== null && typeof state.data[0]?.notes === 'string' && state.data[0].notes !== '' && React.createElement('p', { className: 'dshPlatformNote' }, state.data[0].notes)))
+          notes !== null && React.createElement('p', { className: 'dshPlatformNote' }, notes)))
     }
 
     /* ── 省 Token ──────────────────────────────────────────────────────────── */
@@ -1566,82 +1767,42 @@ window.__ModuleLoader__.load({
           setBusy(false)
         }
       }
+      const saver = state.data === null ? null : state.data[0] ?? {}
+      const local = state.data === null ? null : state.data[1] ?? {}
+      const savings = saver === null ? null : saver.savings ?? null
+      const meterWidth = savings === null ? 0 : Math.min(100, Math.max(0, Number(savings.percent) || 0))
+      const select = (value, levels, onPick) => React.createElement('select', {
+        className: 'dshPlatformSelect',
+        value,
+        disabled: busy,
+        onChange: (event) => onPick(event.target.value)
+      }, levels.map((level) => React.createElement('option', { key: level, value: level }, level)))
+      const labelled = (label, control) => React.createElement('label', { className: 'dshPlatformField' },
+        React.createElement('span', { className: 'dshPlatformMeta' }, label), control)
       return React.createElement(OwnerShell, { t, state },
         React.createElement('div', { className: 'dshPlatform' },
           React.createElement('p', { className: 'dshPlatformIntro' }, t('saver.intro')),
-          state.data !== null && (() => {
-            const saver = state.data[0] ?? {}
-            const local = state.data[1] ?? {}
-            const savings = saver.savings ?? null
-            return React.createElement(React.Fragment, null,
-              React.createElement(Card, { title: t('saver.switches') },
-                React.createElement(SwitchRow, {
-                  t,
-                  checked: saver.enabled !== false,
-                  label: t('saver.master'),
-                  hint: t('saver.masterHint'),
-                  disabled: busy,
-                  onChange: (checked) => { void write('/token-saver', { enabled: checked }) }
-                }),
-                React.createElement(SwitchRow, {
-                  t,
-                  checked: saver.rtk !== false,
-                  label: t('saver.rtk'),
-                  hint: t('saver.rtkHint'),
-                  disabled: busy,
-                  onChange: (checked) => { void write('/token-saver', { rtk: checked }) }
-                })),
-              React.createElement(Card, { title: t('saver.prompts') },
-                React.createElement('div', { className: 'dshPlatformFields' },
-                  React.createElement('label', { className: 'dshPlatformField' },
-                    React.createElement('span', { className: 'dshPlatformMeta' }, t('saver.caveman')),
-                    React.createElement('select', {
-                      className: 'dshPlatformSelect',
-                      value: saver.prompts?.caveman ?? 'off',
-                      disabled: busy,
-                      onChange: (event) => { void write('/token-saver', { prompts: { caveman: event.target.value } }) }
-                    }, CAVEMAN_LEVELS.map((level) => React.createElement('option', { key: level, value: level }, level)))),
-                  React.createElement('label', { className: 'dshPlatformField' },
-                    React.createElement('span', { className: 'dshPlatformMeta' }, t('saver.ponytail')),
-                    React.createElement('select', {
-                      className: 'dshPlatformSelect',
-                      value: saver.prompts?.ponytail ?? 'off',
-                      disabled: busy,
-                      onChange: (event) => { void write('/token-saver', { prompts: { ponytail: event.target.value } }) }
-                    }, PONYTAIL_LEVELS.map((level) => React.createElement('option', { key: level, value: level }, level)))))),
-              React.createElement(Card, { title: t('saver.local') },
-                React.createElement('div', { className: 'dshPlatformGrid' }, LOCAL_KINDS.map((kind) => React.createElement('div', { className: 'dshPlatformStat', key: kind },
-                  React.createElement(SwitchRow, {
-                    t,
-                    checked: local[kind] !== false,
-                    label: t(`saver.kind.${kind}`),
-                    hint: t(`saver.kindHint.${kind}`),
-                    disabled: busy,
-                    onChange: (checked) => { void write('/local-optimize', { [kind]: checked }) }
-                  }))))),
-              React.createElement(Card, { title: t('saver.savings') },
-                savings === null
-                  ? React.createElement('p', { className: 'dshPlatformNote' }, t('saver.noData'))
-                  : React.createElement(React.Fragment, null,
-                    React.createElement('div', { className: 'dshPlatformGrid' },
-                      React.createElement(Stat, { label: t('saver.bytesBefore'), value: `${formatNumber(savings.bytesBefore)} B` }),
-                      React.createElement(Stat, { label: t('saver.bytesAfter'), value: `${formatNumber(savings.bytesAfter)} B` }),
-                      React.createElement(Stat, { label: t('saver.bytesSaved'), value: `${formatNumber(savings.saved)} B` }),
-                      React.createElement(Stat, { label: t('saver.blocks'), value: formatNumber(savings.blocks) }),
-                      React.createElement(Stat, { label: t('saver.calls'), value: formatNumber(savings.calls) }),
-                      React.createElement(Stat, { label: t('saver.promptCalls'), value: formatNumber(savings.promptCalls) })),
-                    React.createElement('div', {
-                      className: 'dshPlatformMeter',
-                      role: 'progressbar',
-                      'aria-valuemin': 0,
-                      'aria-valuemax': 100,
-                      'aria-valuenow': Math.min(100, Math.round(Number(savings.percent) || 0)),
-                      'aria-label': t('saver.savings')
-                    }, React.createElement('div', {
-                      className: Number(savings.percent) > 0 ? 'dshPlatformMeterFill' : 'dshPlatformMeterFillOver',
-                      style: { width: `${Math.min(100, Math.max(0, Number(savings.percent) || 0))}%` }
-                    })))))
-          })(),
+          saver !== null && React.createElement(Card, { title: t('saver.switches') },
+            React.createElement(SwitchRow, { checked: saver.enabled !== false, label: t('saver.master'), hint: t('saver.masterHint'), disabled: busy, onChange: (checked) => { void write('/token-saver', { enabled: checked }) } }),
+            React.createElement(SwitchRow, { checked: saver.rtk !== false, label: t('saver.rtk'), hint: t('saver.rtkHint'), disabled: busy, onChange: (checked) => { void write('/token-saver', { rtk: checked }) } })),
+          saver !== null && React.createElement(Card, { title: t('saver.prompts') },
+            React.createElement('div', { className: 'dshPlatformFields' },
+              labelled(t('saver.caveman'), select(saver.prompts?.caveman ?? 'off', CAVEMAN_LEVELS, (value) => { void write('/token-saver', { prompts: { caveman: value } }) })),
+              labelled(t('saver.ponytail'), select(saver.prompts?.ponytail ?? 'off', PONYTAIL_LEVELS, (value) => { void write('/token-saver', { prompts: { ponytail: value } }) })))),
+          local !== null && React.createElement(Card, { title: t('saver.local') },
+            React.createElement('div', { className: 'dshPlatformGrid' }, LOCAL_KINDS.map((kind) => React.createElement('div', { className: 'dshPlatformStat', key: kind },
+              React.createElement(SwitchRow, { checked: local[kind] !== false, label: t(`saver.kind.${kind}`), hint: t(`saver.kindHint.${kind}`), disabled: busy, onChange: (checked) => { void write('/local-optimize', { [kind]: checked }) } }))))),
+          savings !== null && React.createElement(Card, { title: t('saver.savings') },
+            React.createElement('div', { className: 'dshPlatformGrid' },
+              React.createElement(Stat, { label: t('saver.bytesBefore'), value: `${formatNumber(savings.bytesBefore)} B` }),
+              React.createElement(Stat, { label: t('saver.bytesAfter'), value: `${formatNumber(savings.bytesAfter)} B` }),
+              React.createElement(Stat, { label: t('saver.bytesSaved'), value: `${formatNumber(savings.saved)} B` }),
+              React.createElement(Stat, { label: t('saver.blocks'), value: formatNumber(savings.blocks) }),
+              React.createElement(Stat, { label: t('saver.calls'), value: formatNumber(savings.calls) }),
+              React.createElement(Stat, { label: t('saver.promptCalls'), value: formatNumber(savings.promptCalls) })),
+            React.createElement('div', { className: 'dshPlatformMeter', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': Math.round(meterWidth), 'aria-label': t('saver.savings') },
+              React.createElement('div', { className: Number(savings.percent) > 0 ? 'dshPlatformMeterFill' : 'dshPlatformMeterFillOver', style: { width: `${meterWidth}%` } }))),
+          saver !== null && savings === null && React.createElement('p', { className: 'dshPlatformNote' }, t('saver.noData')),
           note !== '' && React.createElement('p', { className: 'dshPlatformNoteSuccess', role: 'status' }, note),
           error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error }))))
     }
@@ -1663,50 +1824,32 @@ window.__ModuleLoader__.load({
           setBusy('')
         }
       }
+      const clients = state.data === null ? null : state.data[0] ?? {}
+      const forward = clients === null ? null : clients.forward ?? {}
+      const lan = forward === null ? null : forward.lan ?? {}
+      const channel = state.data === null ? null : state.data[4] ?? {}
+      const addresses = state.data === null ? [] : state.data[3]?.addresses ?? []
+      const models = clients !== null && Array.isArray(clients.models) ? clients.models : []
+      const live = (flag) => React.createElement(Pill, { tone: flag === true ? 'ok' : 'off' }, flag === true ? t('gateway.running') : t('gateway.stopped'))
+      const addressList = addresses.length === 0
+        ? React.createElement('p', { className: 'dshPlatformNote' }, t('gateway.noAddress'))
+        : React.createElement('ul', { className: 'dshPlatformList' }, addresses.map((address) => React.createElement('li', { key: address }, React.createElement('code', { className: 'dshPlatformCode' }, address))))
       return React.createElement(OwnerShell, { t, state },
         React.createElement('div', { className: 'dshPlatform' },
           React.createElement('p', { className: 'dshPlatformIntro' }, t('gateway.intro')),
-          state.data !== null && (() => {
-            const clients = state.data[0] ?? {}
-            const forward = clients.forward ?? {}
-            const lan = forward.lan ?? {}
-            const channel = state.data[4] ?? {}
-            const addresses = state.data[3]?.addresses ?? []
-            return React.createElement(React.Fragment, null,
-              React.createElement(Card, { title: t('gateway.local') },
-                React.createElement('div', { className: 'dshPlatformPills' },
-                  React.createElement(Pill, { tone: forward.running === true ? 'ok' : 'off' }, forward.running === true ? t('gateway.running') : t('gateway.stopped')),
-                  React.createElement(Pill, { tone: 'strong' }, `${t('gateway.port')}: ${forward.port ?? 0}`)),
-                React.createElement(SecretRow, {
-                  t,
-                  label: t('gateway.key'),
-                  value: state.data[1]?.key,
-                  busy: busy !== '',
-                  onRotate: () => { void rotate('key', '/forward/rotate') }
-                })),
-              React.createElement(Card, { title: t('gateway.lan') },
-                React.createElement('div', { className: 'dshPlatformPills' },
-                  React.createElement(Pill, { tone: lan.running === true ? 'ok' : 'off' }, lan.running === true ? t('gateway.running') : t('gateway.stopped')),
-                  React.createElement(Pill, { tone: 'strong' }, `${t('gateway.lanPort')}: ${lan.port ?? 0}`)),
-                React.createElement(SecretRow, {
-                  t,
-                  label: t('gateway.lanKey'),
-                  value: state.data[2]?.key,
-                  busy: busy !== '',
-                  onRotate: () => { void rotate('lan', '/forward/lan/rotate') }
-                }),
-                addresses.length === 0
-                  ? React.createElement('p', { className: 'dshPlatformNote' }, t('gateway.noAddress'))
-                  : React.createElement('ul', { className: 'dshPlatformList' }, addresses.map((address) => React.createElement('li', { key: address }, React.createElement('code', { className: 'dshPlatformCode' }, address)))))),
-              React.createElement(Card, { title: t('gateway.channel') },
-                React.createElement('div', { className: 'dshPlatformPills' },
-                  React.createElement(Pill, { tone: channel.running === true ? 'ok' : 'off' }, channel.running === true ? t('gateway.running') : t('gateway.stopped')),
-                  channel.port !== undefined && React.createElement(Pill, { tone: 'strong' }, `${t('gateway.port')}: ${channel.port}`)),
-                channel.note !== undefined && React.createElement('p', { className: 'dshPlatformNote' }, channel.note)),
-              typeof clients.models === 'object' && Array.isArray(clients.models) && React.createElement(Card, { title: t('gateway.models') },
-                React.createElement('p', { className: 'dshPlatformNote' }, t('gateway.modelsHint', { count: clients.models.length })),
-                React.createElement('div', { className: 'dshPlatformChips' }, clients.models.slice(0, 40).map((id) => React.createElement(Pill, { key: id }, id))))
-          })(),
+          forward !== null && React.createElement(Card, { title: t('gateway.local') },
+            React.createElement('div', { className: 'dshPlatformPills' }, live(forward.running), React.createElement(Pill, { tone: 'strong' }, `${t('gateway.port')}: ${forward.port ?? 0}`)),
+            React.createElement(SecretRow, { t, label: t('gateway.key'), value: state.data[1]?.key, busy: busy !== '', onRotate: () => { void rotate('key', '/forward/rotate') } })),
+          lan !== null && React.createElement(Card, { title: t('gateway.lan') },
+            React.createElement('div', { className: 'dshPlatformPills' }, live(lan.running), React.createElement(Pill, { tone: 'strong' }, `${t('gateway.lanPort')}: ${lan.port ?? 0}`)),
+            React.createElement(SecretRow, { t, label: t('gateway.lanKey'), value: state.data[2]?.key, busy: busy !== '', onRotate: () => { void rotate('lan', '/forward/lan/rotate') } }),
+            addressList),
+          channel !== null && React.createElement(Card, { title: t('gateway.channel') },
+            React.createElement('div', { className: 'dshPlatformPills' }, live(channel.running), channel.port !== undefined && React.createElement(Pill, { tone: 'strong' }, `${t('gateway.port')}: ${channel.port}`)),
+            channel.note !== undefined && React.createElement('p', { className: 'dshPlatformNote' }, channel.note)),
+          models.length > 0 && React.createElement(Card, { title: t('gateway.models') },
+            React.createElement('p', { className: 'dshPlatformNote' }, t('gateway.modelsHint', { count: models.length })),
+            React.createElement('div', { className: 'dshPlatformChips' }, models.slice(0, 40).map((id) => React.createElement(Pill, { key: id }, id)))),
           error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error }))))
     }
 
@@ -1717,7 +1860,6 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = React.useState(false)
       const [note, setNote] = React.useState('')
       const [error, setError] = React.useState('')
-      const blank = { id: '', name: '', models: [], strategy: 'fallback', stickyLimit: 1, enabled: true }
       const save = async (chains) => {
         setBusy(true)
         setNote('')
@@ -1733,81 +1875,396 @@ window.__ModuleLoader__.load({
           setBusy(false)
         }
       }
+      const chains = state.data === null ? [] : state.data[0]?.combos ?? []
+      const models = state.data === null ? [] : (state.data[1]?.models ?? []).map((row) => (typeof row === 'string' ? row : row.id))
+      const ready = editing !== null && editing.name.trim() !== '' && (editing.models ?? []).length > 0
+      const strategy = (value, onPick) => React.createElement('select', { className: 'dshPlatformSelect', value, onChange: (event) => onPick(event.target.value) },
+        React.createElement('option', { value: 'fallback' }, 'fallback'),
+        React.createElement('option', { value: 'round-robin' }, 'round-robin'))
+      const editor = editing === null ? null : React.createElement(Card, { title: editing.id === '' ? t('routing.newChain') : t('routing.editChain') },
+        React.createElement('div', { className: 'dshPlatformFields' },
+          React.createElement('label', { className: 'dshPlatformField' },
+            React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.name')),
+            React.createElement('input', { className: 'dshPlatformInput', value: editing.name, placeholder: 'my-chain', onChange: (event) => setEditing({ ...editing, name: event.target.value }) })),
+          React.createElement('label', { className: 'dshPlatformField' },
+            React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.strategy')),
+            strategy(editing.strategy, (value) => setEditing({ ...editing, strategy: value }))),
+          React.createElement('label', { className: 'dshPlatformField' },
+            React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.sticky')),
+            React.createElement('input', { className: 'dshPlatformInput', type: 'number', min: '1', value: String(editing.stickyLimit ?? 1), onChange: (event) => setEditing({ ...editing, stickyLimit: Math.max(1, Number(event.target.value) || 1) }) }))),
+        React.createElement('label', { className: 'dshPlatformField' },
+          React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.models')),
+          React.createElement('textarea', { className: 'dshPlatformTextarea', spellCheck: false, rows: 4, value: (editing.models ?? []).join('\n'), placeholder: 'provider/model', onChange: (event) => setEditing({ ...editing, models: event.target.value.split('\n').map((line) => line.trim()).filter((line) => line !== '') }) })),
+        models.length > 0 && React.createElement('p', { className: 'dshPlatformMeta' }, t('routing.available', { count: models.length })),
+        React.createElement('div', { className: 'dshPlatformBar' },
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy || !ready, onClick: () => { void save(editing.id === '' ? [...chains, { ...editing, name: editing.name.trim() }] : chains.map((chain) => (chain.id === editing.id ? editing : chain))) } }, busy ? t('routing.saving') : t('routing.save')),
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setEditing(null) }, t('routing.cancel'))))
+      const chainRows = chains.length === 0
+        ? React.createElement('p', { className: 'dshPlatformNote' }, t('routing.empty'))
+        : React.createElement('div', { className: 'dshPlatformStack' }, chains.map((chain) => React.createElement('div', { className: 'dshPlatformChain', key: chain.id },
+          React.createElement('div', { className: 'dshPlatformChainHead' },
+            React.createElement('code', { className: 'dshPlatformCode' }, `combo:${chain.id}`),
+            React.createElement(Pill, { tone: chain.enabled === false ? 'off' : 'ok' }, chain.enabled === false ? t('routing.disabled') : t('routing.enabled')),
+            React.createElement(Pill, null, chain.strategy ?? 'fallback'),
+            typeof chain.stickyLimit === 'number' && chain.strategy === 'round-robin' && React.createElement(Pill, null, `${t('routing.sticky')}: ${chain.stickyLimit}`)),
+          React.createElement('p', { className: 'dshPlatformMeta' }, (chain.models ?? []).join(' → ')),
+          React.createElement('div', { className: 'dshPlatformBar' },
+            React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setEditing({ ...chain, models: [...(chain.models ?? [])] }) }, t('routing.edit')),
+            React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => { void save(chains.map((item) => (item.id === chain.id ? { ...item, enabled: item.enabled === false } : item))) } }, chain.enabled === false ? t('routing.enable') : t('routing.disable')),
+            React.createElement('button', { className: 'dshPlatformButton dshPlatformDanger', type: 'button', disabled: busy, onClick: () => { void save(chains.filter((item) => item.id !== chain.id)) } }, t('routing.delete'))))))
       return React.createElement(OwnerShell, { t, state },
         React.createElement('div', { className: 'dshPlatform' },
           React.createElement('p', { className: 'dshPlatformIntro' }, t('routing.intro')),
-          state.data !== null && (() => {
-            const chains = state.data[0]?.combos ?? []
-            const models = (state.data[1]?.models ?? []).map((row) => (typeof row === 'string' ? row : row.id))
-            const without = (id) => chains.filter((chain) => chain.id !== id)
-            return React.createElement(React.Fragment, null,
-              editing !== null && React.createElement(Card, { title: editing.id === '' ? t('routing.newChain') : t('routing.editChain') },
-                React.createElement('div', { className: 'dshPlatformFields' },
-                  React.createElement('label', { className: 'dshPlatformField' },
-                    React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.name')),
-                    React.createElement('input', {
-                      className: 'dshPlatformInput',
-                      value: editing.name,
-                      placeholder: 'my-chain',
-                      onChange: (event) => setEditing({ ...editing, name: event.target.value })
-                    })),
-                  React.createElement('label', { className: 'dshPlatformField' },
-                    React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.strategy')),
-                    React.createElement('select', {
-                      className: 'dshPlatformSelect',
-                      value: editing.strategy,
-                      onChange: (event) => setEditing({ ...editing, strategy: event.target.value })
-                    },
-                      React.createElement('option', { value: 'fallback' }, 'fallback'),
-                      React.createElement('option', { value: 'round-robin' }, 'round-robin'))),
-                  React.createElement('label', { className: 'dshPlatformField' },
-                    React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.sticky')),
-                    React.createElement('input', {
-                      className: 'dshPlatformInput',
-                      type: 'number',
-                      min: '1',
-                      value: String(editing.stickyLimit ?? 1),
-                      onChange: (event) => setEditing({ ...editing, stickyLimit: Math.max(1, Number(event.target.value) || 1) })
-                    }))),
-                React.createElement('label', { className: 'dshPlatformField' },
-                  React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.models')),
-                  React.createElement('textarea', {
-                    className: 'dshPlatformTextarea',
-                    spellCheck: false,
-                    rows: 4,
-                    value: (editing.models ?? []).join('\n'),
-                    placeholder: 'provider/model',
-                    onChange: (event) => setEditing({ ...editing, models: event.target.value.split('\n').map((line) => line.trim()).filter((line) => line !== '') })
-                  })),
-                models.length > 0 && React.createElement('p', { className: 'dshPlatformMeta' }, t('routing.available', { count: models.length })),
-                React.createElement('div', { className: 'dshPlatformBar' },
-                  React.createElement('button', {
-                    className: 'dshPlatformButton',
-                    type: 'button',
-                    disabled: busy || editing.name.trim() === '' || (editing.models ?? []).length === 0,
-                    onClick: () => { void save(editing.id === '' ? [...chains, { ...editing, name: editing.name.trim() }] : chains.map((chain) => (chain.id === editing.id ? editing : chain))) }
-                  }, busy ? t('routing.saving') : t('routing.save')),
-                  React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setEditing(null) }, t('routing.cancel')))),
-              React.createElement(Card, { title: t('routing.chains', { count: chains.length }) },
-                React.createElement('div', { className: 'dshPlatformBar' },
-                  React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setEditing({ ...blank }) }, t('routing.newChain')),
-                  React.createElement('span', { className: 'dshPlatformBarSpacer' })),
-                chains.length === 0
-                  ? React.createElement('p', { className: 'dshPlatformNote' }, t('routing.empty'))
-                  : React.createElement('div', { className: 'dshPlatformStack' }, chains.map((chain) => React.createElement('div', { className: 'dshPlatformChain', key: chain.id },
-                    React.createElement('div', { className: 'dshPlatformChainHead' },
-                      React.createElement('code', { className: 'dshPlatformCode' }, `combo:${chain.id}`),
-                      React.createElement(Pill, { tone: chain.enabled === false ? 'off' : 'ok' }, chain.enabled === false ? t('routing.disabled') : t('routing.enabled')),
-                      React.createElement(Pill, null, chain.strategy ?? 'fallback'),
-                      typeof chain.stickyLimit === 'number' && chain.strategy === 'round-robin' && React.createElement(Pill, null, `${t('routing.sticky')}: ${chain.stickyLimit}`)),
-                    React.createElement('p', { className: 'dshPlatformMeta' }, (chain.models ?? []).join(' → ')),
-                    React.createElement('div', { className: 'dshPlatformBar' },
-                      React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setEditing({ ...chain, models: [...(chain.models ?? [])] }) }, t('routing.edit')),
-                      React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => { void save(chains.map((item) => (item.id === chain.id ? { ...item, enabled: item.enabled === false } : item))) } }, chain.enabled === false ? t('routing.enable') : t('routing.disable')),
-                      React.createElement('button', { className: 'dshPlatformButton dshPlatformDanger', type: 'button', disabled: busy, onClick: () => { void save(without(chain.id)) } }, t('routing.delete'))))))))
-          })(),
+          editor,
+          state.data !== null && React.createElement(Card, { title: t('routing.chains', { count: chains.length }) },
+            React.createElement('div', { className: 'dshPlatformBar' },
+              React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setEditing({ id: '', name: '', models: [], strategy: 'fallback', stickyLimit: 1, enabled: true }) }, t('routing.newChain')),
+              React.createElement('span', { className: 'dshPlatformBarSpacer' })),
+            chainRows),
           note !== '' && React.createElement('p', { className: 'dshPlatformNoteSuccess', role: 'status' }, note),
           error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error }))))
+    }
+
+    /* ── EAC 模型 ──────────────────────────────────────────────────────────── */
+    function EacPage ({ t }) {
+      const state = useOwner(['/eac/status'])
+      const [busy, setBusy] = React.useState('')
+      const [pending, setPending] = React.useState(null)
+      const [note, setNote] = React.useState('')
+      const [error, setError] = React.useState('')
+      const auth = state.data === null ? null : state.data[0] ?? {}
+      const link = pending === null ? null : pending.link
+      // The device flow is polled, not pushed: the owner answers a poll with the
+      // GitHub state it last saw, so a slow page is a lag, never a loss.
+      React.useEffect(() => {
+        if (link === null) return undefined
+        let alive = true
+        const timer = setInterval(() => {
+          ownerGet(`/eac/login/poll?link=${encodeURIComponent(link)}`)
+            .then((answer) => {
+              if (!alive) return
+              if (answer?.status === 'ok') {
+                setPending(null)
+                setNote(t('eac.signedIn', { login: answer.login ?? '' }))
+                state.reload()
+              } else if (answer?.error !== undefined) {
+                setPending(null)
+                setError(t('eac.pollFailed', { reason: answer.error }))
+              }
+            })
+            .catch((failure) => { if (alive) setError(messageOf(failure)) })
+        }, 2000)
+        return () => { alive = false; clearInterval(timer) }
+      }, [link])
+      const call = async (kind, path, body, timeout, label) => {
+        setBusy(kind)
+        setNote('')
+        setError('')
+        try {
+          return await ownerPost(path, body, timeout)
+        } catch (failure) {
+          setError(messageOf(failure))
+          return null
+        } finally {
+          setBusy('')
+        }
+      }
+      const start = async () => {
+        const started = await call('login', '/eac/login/start', undefined, 20_000)
+        if (started === null) return
+        if (started.error !== undefined) { setError(t('eac.startFailed', { reason: started.error })); return }
+        setPending({ link: started.link, url: started.url ?? '' })
+      }
+      const cancel = async () => {
+        if (pending === null) return
+        await call('cancel', `/eac/login/cancel?link=${encodeURIComponent(pending.link)}`, undefined, 20_000)
+        setPending(null)
+      }
+      const logout = async () => {
+        await call('logout', '/eac/logout', undefined, 20_000)
+        setNote(t('eac.signedOut'))
+        state.reload()
+      }
+      const authorized = auth !== null && auth.authorized === true
+      const pills = auth === null ? [] : [
+        React.createElement(Pill, { key: 'lane', tone: auth.available === true ? 'ok' : 'off' }, auth.available === true ? t('eac.laneReady') : t('eac.laneMissing')),
+        React.createElement(Pill, { key: 'auth', tone: authorized ? 'ok' : 'warn' }, authorized ? t('eac.authorized') : t('eac.unauthorized')),
+        auth.required === true && React.createElement(Pill, { key: 'required', tone: 'strong' }, t('eac.required')),
+        auth.configured === true && React.createElement(Pill, { key: 'configured' }, t('eac.configured')),
+        typeof auth.login === 'string' && auth.login !== '' && React.createElement(Pill, { key: 'login', tone: 'strong' }, auth.login),
+        auth.starred === true && React.createElement(Pill, { key: 'starred' }, t('eac.starred'))
+      ]
+      const repo = typeof auth?.repo === 'string' ? auth.repo : ''
+      return React.createElement(OwnerShell, { t, state },
+        React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformIntro' }, t('eac.intro')),
+          pills.length > 0 && React.createElement('div', { className: 'dshPlatformPills' }, pills),
+          auth !== null && typeof auth.reason === 'string' && auth.reason !== '' && React.createElement('p', { className: 'dshPlatformNote' }, t('eac.reason', { reason: auth.reason })),
+          repo !== '' && React.createElement('p', { className: 'dshPlatformMeta' }, t('eac.repo', { repo })),
+          note !== '' && React.createElement('p', { className: 'dshPlatformNoteSuccess', role: 'status' }, note),
+          error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, error.startsWith('FreeModel') ? error : t('eac.failed', { message: error })),
+          pending === null
+            ? React.createElement('div', { className: 'dshPlatformBar' },
+              authorized
+                ? React.createElement('button', { className: 'dshPlatformButton dshPlatformDanger', type: 'button', disabled: busy !== '', onClick: () => { void logout() } }, busy === 'logout' ? t('eac.working') : t('eac.logout'))
+                : React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '' || auth?.available !== true, onClick: () => { void start() } }, busy === 'login' ? t('eac.working') : t('eac.login')),
+              auth?.available !== true && React.createElement('p', { className: 'dshPlatformNote' }, t('eac.laneMissingHint')))
+            : React.createElement(Card, { title: t('eac.pendingTitle') },
+              React.createElement('p', { className: 'dshPlatformMeta' }, t('eac.pendingHint')),
+              pending.url !== '' && React.createElement('code', { className: 'dshPlatformCode' }, pending.url),
+              React.createElement('div', { className: 'dshPlatformBar' },
+                React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void cancel() } }, busy === 'cancel' ? t('eac.working') : t('eac.cancel'))))))
+    }
+
+    /* ── 聚合渠道 ──────────────────────────────────────────────────────────── */
+    function AggregatePage ({ t }) {
+      const state = useOwner(['/providers'])
+      const [query, setQuery] = React.useState('')
+      const [editing, setEditing] = React.useState(null)
+      const [busy, setBusy] = React.useState('')
+      const [note, setNote] = React.useState('')
+      const [error, setError] = React.useState('')
+      const [found, setFound] = React.useState(null)
+      const answer = state.data === null ? null : state.data[0] ?? {}
+      const registry = Array.isArray(answer?.registry) ? answer.registry : []
+      const configured = answer?.configured?.providers ?? {}
+      const needle = query.trim().toLowerCase()
+      const shown = needle === ''
+        ? registry
+        : registry.filter((provider) => `${provider.id} ${provider.name ?? ''}`.toLowerCase().includes(needle))
+      const blank = { providerId: '', enabled: true, baseUrl: '', apiKey: '', models: '' }
+      const draft = editing ?? blank
+      const run = async (kind, body, path, timeout) => {
+        setBusy(kind)
+        setNote('')
+        setError('')
+        try {
+          return await ownerPost(path, body, timeout)
+        } catch (failure) {
+          setError(messageOf(failure))
+          return null
+        } finally {
+          setBusy('')
+        }
+      }
+      const save = async () => {
+        const body = { providerId: draft.providerId, enabled: draft.enabled, baseUrl: draft.baseUrl, models: draft.models.split(/[,\n]/).map((row) => row.trim()).filter((row) => row !== '') }
+        // An empty key box means *keep*: the owner tells an absent field from an
+        // empty string, and conflating them is what silently kept a key the user
+        // believed they had deleted. Clearing is therefore its own button.
+        if (draft.apiKey !== '') body.apiKey = draft.apiKey
+        setBusy('save')
+        setNote('')
+        setError('')
+        try {
+          await ownerPost('/providers', body)
+          setNote(t('aggregate.saved'))
+          setEditing(null)
+          state.reload()
+        } catch (failure) {
+          setError(messageOf(failure))
+        } finally {
+          setBusy('')
+        }
+      }
+      const clearKey = async () => {
+        await run('clear', { providerId: draft.providerId, apiKey: '' }, '/providers', 30_000)
+        setEditing((current) => (current === null ? null : { ...current, apiKey: '' }))
+        state.reload()
+      }
+      const test = async () => {
+        const result = await run('test', { providerId: draft.providerId }, '/providers/test', 60_000)
+        if (result === null) return
+        setNote(t(result.ok === true ? 'aggregate.testOk' : 'aggregate.testFailed', { status: result.status ?? 0 }))
+      }
+      const discover = async () => {
+        const result = await run('discover', { providerId: draft.providerId }, '/providers/discover', 60_000)
+        if (result === null) return
+        setFound(Array.isArray(result.models) ? result.models : null)
+        state.reload()
+      }
+      const remove = async () => {
+        await run('remove', { providerId: draft.providerId }, '/providers/remove', 30_000)
+        setNote(t('aggregate.removed'))
+        setEditing(null)
+        state.reload()
+      }
+      const verdict = configured[draft.providerId]?.lastTest
+      const editor = editing === null ? null : React.createElement(Card, { title: t('aggregate.editing', { name: editing.name }) },
+        React.createElement('div', { className: 'dshPlatformFields' },
+          React.createElement('label', { className: 'dshPlatformField' },
+            React.createElement('span', { className: 'dshPlatformMeta' }, t('aggregate.baseUrl')),
+            React.createElement('input', { className: 'dshPlatformInput', value: draft.baseUrl, placeholder: editing.baseUrl ?? '', onChange: (event) => setEditing({ ...editing, baseUrl: event.target.value }) })),
+          React.createElement('label', { className: 'dshPlatformField' },
+            React.createElement('span', { className: 'dshPlatformMeta' }, t('aggregate.apiKey')),
+            React.createElement('input', { className: 'dshPlatformInput', type: 'password', value: draft.apiKey, placeholder: t('aggregate.keyPlaceholder'), onChange: (event) => setEditing({ ...editing, apiKey: event.target.value }) })),
+          React.createElement('label', { className: 'dshPlatformField' },
+            React.createElement('span', { className: 'dshPlatformMeta' }, t('aggregate.models')),
+            React.createElement('textarea', { className: 'dshPlatformTextarea', spellCheck: false, rows: 3, value: draft.models, placeholder: 'model-id, model-id', onChange: (event) => setEditing({ ...editing, models: event.target.value }) }))),
+        React.createElement(SwitchRow, { checked: draft.enabled, label: t('aggregate.enabled'), hint: t('aggregate.enabledHint'), disabled: busy !== '', onChange: (checked) => setEditing({ ...editing, enabled: checked }) }),
+        React.createElement('p', { className: 'dshPlatformMeta' }, t('aggregate.registryModels', { count: Array.isArray(editing.models) ? editing.models.length : 0 })),
+        React.createElement('div', { className: 'dshPlatformBar' },
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void save() } }, busy === 'save' ? t('aggregate.saving') : t('aggregate.save')),
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void test() } }, busy === 'test' ? t('aggregate.working') : t('aggregate.test')),
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void discover() } }, busy === 'discover' ? t('aggregate.working') : t('aggregate.discover')),
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void clearKey() } }, busy === 'clear' ? t('aggregate.working') : t('aggregate.clearKey')),
+          React.createElement('button', { className: 'dshPlatformButton dshPlatformDanger', type: 'button', disabled: busy !== '', onClick: () => { void remove() } }, busy === 'remove' ? t('aggregate.working') : t('aggregate.remove'))),
+        verdict !== undefined && verdict !== null && React.createElement('p', { className: verdict.ok === true ? 'dshPlatformNoteSuccess' : 'dshPlatformNote' }, t(verdict.ok === true ? 'aggregate.lastTestOk' : 'aggregate.lastTestFailed', { at: new Date(verdict.at).toLocaleString() })),
+        found !== null && React.createElement(Card, { title: t('aggregate.discovered', { count: found.length }) },
+          found.length === 0
+            ? React.createElement('p', { className: 'dshPlatformNote' }, t('aggregate.discoveredEmpty'))
+            : React.createElement('p', { className: 'dshPlatformMeta' }, found.join(', '))))
+      const rows = shown.length === 0
+        ? React.createElement('p', { className: 'dshPlatformNote' }, registry.length === 0 ? t('aggregate.empty') : t('aggregate.noMatch'))
+        : React.createElement('div', { className: 'dshPlatformStack' }, shown.map((provider) => {
+          const state2 = configured[provider.id]
+          const on = state2 !== undefined && state2 !== null && state2.enabled !== false
+          return React.createElement('div', { className: 'dshPlatformChain', key: provider.id },
+            React.createElement('div', { className: 'dshPlatformChainHead' },
+              React.createElement('span', null, provider.name ?? provider.id),
+              React.createElement(Pill, null, provider.category ?? ''),
+              React.createElement(Pill, { tone: on ? 'ok' : 'off' }, on ? t('aggregate.on') : t('aggregate.off')),
+              state2?.lastTest?.ok === true && React.createElement(Pill, { tone: 'ok' }, t('aggregate.verified'))),
+            React.createElement('p', { className: 'dshPlatformMeta' }, `${provider.id} · ${provider.format ?? ''}`),
+            React.createElement('div', { className: 'dshPlatformBar' },
+              React.createElement('button', { className: 'dshPlatformButton', type: 'button', onClick: () => { setFound(null); setEditing({ providerId: provider.id, name: provider.name ?? provider.id, enabled: on, baseUrl: state2?.baseUrl ?? provider.baseUrl ?? '', apiKey: '', models: (state2?.models ?? []).join(', ') }) } }, t('aggregate.configure'))))
+        }))
+      return React.createElement(OwnerShell, { t, state },
+        React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformIntro' }, t('aggregate.intro')),
+          React.createElement('div', { className: 'dshPlatformBar' },
+            React.createElement('input', { className: 'dshPlatformInput', value: query, placeholder: t('aggregate.search'), 'aria-label': t('aggregate.search'), onChange: (event) => setQuery(event.target.value) })),
+          editor,
+          note !== '' && React.createElement('p', { className: 'dshPlatformNoteSuccess', role: 'status' }, note),
+          error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error })),
+          React.createElement(Card, { title: t('aggregate.providers', { count: shown.length }) }, rows)))
+    }
+
+    /* ── 数据看板 ──────────────────────────────────────────────────────────── */
+    function percentOf (part, whole) {
+      return typeof whole === 'number' && whole > 0 ? `${Math.round((part / whole) * 100)}%` : '—'
+    }
+
+    function DashboardPage ({ t }) {
+      const state = useOwner(['/stats'])
+      const stats = state.data === null ? null : state.data[0] ?? {}
+      const grand = stats === null ? null : stats.grand ?? {}
+      const rows = stats === null ? [] : stats.models ?? []
+      const days = stats === null ? [] : (stats.days ?? []).slice(-14)
+      const savings = stats === null ? null : stats.savings ?? null
+      const success = grand === null ? 0 : Math.max(0, (grand.calls ?? 0) - (grand.failed ?? 0))
+      const tokenTotal = grand === null ? 0 : (grand.input ?? 0) + (grand.output ?? 0) + (grand.reasoning ?? 0)
+      const peak = days.reduce((max, day) => Math.max(max, day.total ?? 0), 0)
+      const kpis = grand === null ? [] : [
+        React.createElement(Stat, { key: 'calls', label: t('dash.calls'), value: formatNumber(grand.calls) }),
+        React.createElement(Stat, { key: 'turns', label: t('dash.turns'), value: formatNumber(grand.turns) }),
+        React.createElement(Stat, { key: 'ok', label: t('dash.success'), value: percentOf(success, grand.calls ?? 0) }),
+        React.createElement(Stat, { key: 'tokens', label: t('dash.tokens'), value: formatNumber(tokenTotal) }),
+        React.createElement(Stat, { key: 'saved', label: t('dash.saved'), value: savings === null ? '—' : `${formatNumber(savings.saved)} B` })
+      ]
+      const dayRows = days.length === 0
+        ? React.createElement('p', { className: 'dshPlatformNote' }, t('dash.empty'))
+        : React.createElement('div', { className: 'dshPlatformStack' }, days.map((day) => React.createElement('div', { className: 'dshPlatformChain', key: day.day },
+          React.createElement('div', { className: 'dshPlatformChainHead' },
+            React.createElement('code', { className: 'dshPlatformCode' }, day.day),
+            React.createElement(Pill, { tone: 'strong' }, `${formatNumber(day.total)} ${t('dash.tokens')}`)),
+          React.createElement('div', { className: 'dshPlatformMeter', 'aria-hidden': 'true' },
+            React.createElement('div', { className: 'dshPlatformMeterFill', style: { width: `${peak > 0 ? Math.round(((day.total ?? 0) / peak) * 100) : 0}%` } })))))
+      const modelRows = rows.length === 0
+        ? React.createElement('p', { className: 'dshPlatformNote' }, t('dash.noModels'))
+        : rows.map((row) => React.createElement('tr', { key: row.model },
+          React.createElement('td', null, row.name ?? row.model),
+          React.createElement('td', null, formatNumber(row.calls)),
+          React.createElement('td', null, formatNumber(row.turns)),
+          React.createElement('td', null, formatNumber(row.input)),
+          React.createElement('td', null, formatNumber(row.output)),
+          React.createElement('td', null, formatNumber(row.reasoning)),
+          React.createElement('td', null, formatNumber(row.failed)),
+          React.createElement('td', null, row.tps === null || row.tps === undefined ? '—' : String(row.tps)),
+          React.createElement('td', null, row.avgTtftMs === null || row.avgTtftMs === undefined ? '—' : `${formatNumber(row.avgTtftMs)} ms`)))
+      const table = rows.length === 0 ? null : React.createElement('div', { className: 'dshPlatformTableWrap' },
+        React.createElement('table', { className: 'dshPlatformTable' },
+          React.createElement('thead', null, React.createElement('tr', null,
+            React.createElement('th', { scope: 'col' }, t('dash.columnModel')),
+            React.createElement('th', { scope: 'col' }, t('dash.calls')),
+            React.createElement('th', { scope: 'col' }, t('dash.turns')),
+            React.createElement('th', { scope: 'col' }, t('dash.columnInput')),
+            React.createElement('th', { scope: 'col' }, t('dash.columnOutput')),
+            React.createElement('th', { scope: 'col' }, t('dash.columnReasoning')),
+            React.createElement('th', { scope: 'col' }, t('dash.columnFailed')),
+            React.createElement('th', { scope: 'col' }, t('dash.columnTps')),
+            React.createElement('th', { scope: 'col' }, t('dash.columnTtft')))),
+          React.createElement('tbody', null, modelRows)))
+      return React.createElement(OwnerShell, { t, state },
+        React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformIntro' }, t('dash.intro')),
+          kpis.length > 0 && React.createElement('div', { className: 'dshPlatformGrid' }, kpis),
+          stats !== null && stats.requestFailuresEstimated === true && React.createElement('p', { className: 'dshPlatformMeta' }, t('dash.estimated')),
+          table !== null && React.createElement(Card, { title: t('dash.byModel') }, table),
+          React.createElement(Card, { title: t('dash.byDay') }, dayRows)))
+    }
+
+    /* ── 运行日志 ──────────────────────────────────────────────────────────── */
+    const LOG_PAGE_SIZES = [20, 50, 100]
+
+    function LogPage ({ t }) {
+      const state = useOwner(['/stats'])
+      const [onlyFailed, setOnlyFailed] = React.useState(false)
+      const [model, setModel] = React.useState('')
+      const [size, setSize] = React.useState(20)
+      const [page, setPage] = React.useState(1)
+      const stats = state.data === null ? null : state.data[0] ?? {}
+      const samples = stats === null ? [] : stats.samples ?? []
+      const models = stats === null ? [] : (stats.models ?? []).map((row) => row.model)
+      const filtered = samples.filter((row) => (onlyFailed ? row.ok !== true : true) && (model === '' || row.model === model))
+      const pages = Math.max(1, Math.ceil(filtered.length / size))
+      const current = Math.min(page, pages)
+      const shown = filtered.slice((current - 1) * size, current * size)
+      const note = (row) => [row.truncated === true ? t('log.truncated') : '', row.noUsage === true ? t('log.noUsage') : ''].filter((text) => text !== '').join(' · ')
+      const rows = shown.length === 0
+        ? React.createElement('p', { className: 'dshPlatformNote' }, samples.length === 0 ? t('log.empty') : t('log.noMatch'))
+        : shown.map((row) => React.createElement('tr', { key: `${row.at}-${row.model}-${row.input}-${row.output}` },
+          React.createElement('td', null, new Date(row.at).toLocaleString()),
+          React.createElement('td', null, row.model),
+          React.createElement('td', null, React.createElement(Pill, { tone: row.ok === true ? 'ok' : 'danger' }, row.ok === true ? t('log.ok') : t('log.failed'))),
+          React.createElement('td', null, formatNumber(row.input)),
+          React.createElement('td', null, formatNumber(row.output)),
+          React.createElement('td', null, typeof row.tps === 'number' ? String(row.tps) : '—'),
+          React.createElement('td', null, typeof row.ttftMs === 'number' ? `${formatNumber(row.ttftMs)} ms` : '—'),
+          React.createElement('td', null, typeof row.decodeMs === 'number' ? `${formatNumber(row.decodeMs)} ms` : '—'),
+          React.createElement('td', null, [row.origin ?? '', row.effort ?? '', note(row)].filter((text) => text !== '').join(' · '))))
+      const table = shown.length === 0 ? null : React.createElement('div', { className: 'dshPlatformTableWrap' },
+        React.createElement('table', { className: 'dshPlatformTable' },
+          React.createElement('thead', null, React.createElement('tr', null,
+            React.createElement('th', { scope: 'col' }, t('log.columnTime')),
+            React.createElement('th', { scope: 'col' }, t('log.columnModel')),
+            React.createElement('th', { scope: 'col' }, t('log.columnResult')),
+            React.createElement('th', { scope: 'col' }, t('dash.columnInput')),
+            React.createElement('th', { scope: 'col' }, t('dash.columnOutput')),
+            React.createElement('th', { scope: 'col' }, t('dash.columnTps')),
+            React.createElement('th', { scope: 'col' }, t('dash.columnTtft')),
+            React.createElement('th', { scope: 'col' }, t('log.columnDecode')),
+            React.createElement('th', { scope: 'col' }, t('log.columnNotes')))),
+          React.createElement('tbody', null, rows)))
+      return React.createElement(OwnerShell, { t, state },
+        React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformIntro' }, t('log.intro')),
+          React.createElement('div', { className: 'dshPlatformBar' },
+            React.createElement(SwitchRow, { checked: onlyFailed, label: t('log.onlyFailed'), onChange: (checked) => { setOnlyFailed(checked); setPage(1) } }),
+            React.createElement('label', { className: 'dshPlatformField' },
+              React.createElement('span', { className: 'dshPlatformMeta' }, t('log.filterModel')),
+              React.createElement('select', { className: 'dshPlatformSelect', value: model, onChange: (event) => { setModel(event.target.value); setPage(1) } },
+                React.createElement('option', { value: '' }, t('log.allModels')),
+                models.map((id) => React.createElement('option', { key: id, value: id }, id)))),
+            React.createElement('label', { className: 'dshPlatformField' },
+              React.createElement('span', { className: 'dshPlatformMeta' }, t('log.pageSize')),
+              React.createElement('select', { className: 'dshPlatformSelect', value: String(size), onChange: (event) => { setSize(Number(event.target.value) || 20); setPage(1) } },
+                LOG_PAGE_SIZES.map((value) => React.createElement('option', { key: value, value: String(value) }, String(value)))))),
+          state.data !== null && React.createElement('p', { className: 'dshPlatformMeta' }, t('log.count', { shown: filtered.length, total: samples.length, page: current, pages })),
+          React.createElement(Card, { title: t('log.title') }, table),
+          pages > 1 && React.createElement('div', { className: 'dshPlatformBar' },
+            React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: current <= 1, onClick: () => setPage(current - 1) }, t('log.prev')),
+            React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: current >= pages, onClick: () => setPage(current + 1) }, t('log.next')))))
     }
 
     const inject = []

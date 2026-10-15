@@ -139,9 +139,9 @@ const [tabBarElement, panelHost] = tree.children
 // The first child is the TabBar component element; render it to reach its props.
 const tabBar = tabBarElement.type(tabBarElement.props)
 if (tabBar.props.role !== 'tablist') throw new Error('first child is not the tab strip')
-if (tabBar.children.length !== 7) throw new Error(`expected 7 tabs, got ${tabBar.children.length}`)
+if (tabBar.children.length !== 11) throw new Error(`expected 11 tabs, got ${tabBar.children.length}`)
 const tabIds = tabBar.children.map((child) => child.props.id)
-const wanted = ['usage', 'archive', 'memory', 'upgrade', 'saver', 'gateway', 'routing']
+const wanted = ['usage', 'archive', 'memory', 'upgrade', 'eac', 'aggregate', 'saver', 'routing', 'dashboard', 'logs', 'gateway']
 if (tabIds.join() !== wanted.map((id) => `dshPlatformTab-${id}`).join()) {
   throw new Error(`tab ids: ${tabIds}`)
 }
@@ -166,15 +166,20 @@ globalThis.fetch = async (url, options) => {
 
 const PAGES = {
   upgrade: ['/api/our-free-model/update/status'],
+  eac: ['/api/our-free-model/eac/status'],
+  aggregate: ['/api/our-free-model/providers'],
   saver: ['/api/our-free-model/token-saver', '/api/our-free-model/local-optimize'],
+  routing: ['/api/our-free-model/combos', '/api/our-free-model/summary'],
+  // The dashboard and the call log are two readings of the same ledger.
+  dashboard: ['/api/our-free-model/stats'],
+  logs: ['/api/our-free-model/stats'],
   gateway: [
     '/api/our-free-model/clients',
     '/api/our-free-model/forward/key',
     '/api/our-free-model/forward/lan/key',
     '/api/our-free-model/forward/lan/addresses',
     '/api/our-free-model/chan-gateway'
-  ],
-  routing: ['/api/our-free-model/combos', '/api/our-free-model/summary']
+  ]
 }
 
 for (const [id, routes] of Object.entries(PAGES)) {
@@ -204,6 +209,161 @@ for (const [id, routes] of Object.entries(PAGES)) {
   console.log(`${id}: reads ${routes.length} owner route(s), same-origin, degrades to a note while loading`)
 }
 
+// ── the new pages, rendered against real payloads ─────────────────────────
+// The harness above paints one pass with inert effects, which proves a page
+// asks the right routes but not that it draws the answer. This pass gives the
+// hooks a memory: a page that loads is re-rendered, and the values it actually
+// puts on screen are asserted.
+const STATS = {
+  requests: 12,
+  requestFailures: 1,
+  requestFailuresEstimated: true,
+  turns: 3,
+  failedTurns: 1,
+  recoveredTurns: 0,
+  days: [{ day: '2026-10-14', total: 160, models: [] }],
+  models: [{
+    model: 'deepseek-chat',
+    name: 'DeepSeek Chat',
+    input: 100, output: 50, reasoning: 10, cacheRead: 0,
+    calls: 4, failed: 1, turns: 3, failedTurns: 1, recoveredTurns: 0,
+    tps: 42, avgTtftMs: 350
+  }],
+  samples: [
+    { at: 1760000000000, model: 'deepseek-chat', ok: true, input: 12, output: 34, ttftMs: 210, tps: 44, decodeMs: 800, decodeTokens: 34, effort: '', origin: 'chat' },
+    { at: 1760000001000, model: 'deepseek-chat', ok: false, input: 1, output: 0, ttftMs: null, tps: null, decodeMs: 0, decodeTokens: 0, effort: '', origin: 'chat', truncated: true }
+  ],
+  savings: { bytesBefore: 1000, bytesAfter: 400, saved: 600, blocks: 3, calls: 9, promptCalls: 2, percent: 60 },
+  grand: { input: 100, output: 50, reasoning: 10, calls: 4, failed: 1, turns: 3, failedTurns: 1, recoveredTurns: 0 }
+}
+
+const AGGREGATE = {
+  registry: [{ id: 'agnes', name: 'Agnes AI', category: 'apikey', format: 'openai-chat', baseUrl: 'https://example.invalid/v1' }],
+  configured: { providers: { agnes: { enabled: true, baseUrl: 'https://example.invalid/v1', models: ['agnes-2.0-flash'], lastTest: { at: 1760000000000, ok: true, status: 200, message: '' } } } }
+}
+
+const EAC = { available: true, authorized: true, login: 'octocat', starred: true, required: false, configured: true, repo: 'acme/models', reason: null }
+
+const ANSWERS = {
+  '/api/our-free-model/stats': STATS,
+  '/api/our-free-model/providers': AGGREGATE,
+  '/api/our-free-model/eac/status': EAC
+}
+
+const realFetch = globalThis.fetch
+globalThis.fetch = async (url) => {
+  const path = String(url)
+  const body = ANSWERS[path]
+  if (body === undefined) return { ok: true, status: 200, json: async () => ({}) }
+  return { ok: true, status: 200, json: async () => body }
+}
+
+/** A React whose hooks remember, so a load can be painted and then asserted. */
+function statefulHooks () {
+  const cells = {}
+  const queued = []
+  let cursor = 0
+  const paint = () => {
+    queued.length = 0
+    cursor = 0
+    return expand(mountNow())
+  }
+  const React$ = {
+    ...React,
+    useState: (init) => {
+      const at = cursor++
+      if (!(at in cells)) cells[at] = typeof init === 'function' ? init() : init
+      return [cells[at], (value) => {
+        cells[at] = typeof value === 'function' ? value(cells[at]) : value
+        queued.push('again')
+      }]
+    },
+    useEffect: (run) => { queued.push(run) }
+  }
+  return { React$, paint, queued, reset: () => { for (const key of Object.keys(cells)) delete cells[key] } }
+}
+
+const hooked = statefulHooks()
+const keepUseState = React.useState
+const keepUseEffect = React.useEffect
+let mountNow = () => { throw new Error('mount not set') }
+React.useState = hooked.React$.useState
+React.useEffect = hooked.React$.useEffect
+
+/**
+ * Paint a page repeatedly until its loads stop changing the tree, then hand
+ * the last tree back.
+ */
+async function settled (mount, passes = 8) {
+  mountNow = mount
+  let tree = null
+  for (let pass = 0; pass < passes; pass += 1) {
+    tree = hooked.paint()
+    const work = hooked.queued.splice(0)
+    for (const item of work) {
+      if (typeof item === 'function') item()
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    if (hooked.queued.length === 0 && pass > 0) break
+  }
+  return tree
+}
+
+async function pageWith (id) {
+  hooked.reset()
+  rememberedTab = id
+  registered.sections.length = 0
+  plugin.apply(ctx)
+  const mounted = registered.sections[registered.sections.length - 1]
+  return settled(() => mounted.component(mounted.entry.inject()))
+}
+
+const textsOf = (node, out = []) => {
+  walkTree(node, (candidate) => { for (const child of candidate.children) if (typeof child === 'string') out.push(child) })
+  return out
+}
+
+const dashboard = await pageWith('dashboard')
+const dashboardText = textsOf(dashboard)
+for (const needle of ['DeepSeek Chat', '2026-10-14', '75%', '350 ms', '600 B', '4']) {
+  if (!dashboardText.includes(needle)) throw new Error(`dashboard never shows ${needle}`)
+}
+if (findByText(dashboard, 'settings.desktopPlatform/dash.byModel') === null) throw new Error('dashboard has no model table')
+console.log('dashboard: model rows, day series, success rate and savings drawn from the owner ledger')
+
+const logs = await pageWith('logs')
+const logText = textsOf(logs)
+for (const needle of ['deepseek-chat', '210 ms', 'settings.desktopPlatform/log.ok']) {
+  if (!logText.includes(needle)) throw new Error(`call log never shows ${needle}`)
+}
+// The notes column joins its marks into one cell, so the cut-short call is
+// recognised by a substring rather than by an exact text node.
+if (!logText.some((text) => text.includes('log.truncated'))) {
+  throw new Error('the cut-short call is not marked in the notes column')
+}
+// The failed row is the one that matters: it has to be visible next to the ok one.
+if (logText.filter((text) => text === 'settings.desktopPlatform/log.ok').length !== 1) throw new Error('call log lost the successful row')
+if (logText.filter((text) => text === 'settings.desktopPlatform/log.failed').length !== 1) throw new Error('call log lost the failed row')
+console.log('call log: both rows drawn, the cut-short call marked')
+
+const aggregate = await pageWith('aggregate')
+const aggregateText = textsOf(aggregate)
+for (const needle of ['Agnes AI', 'settings.desktopPlatform/aggregate.on', 'settings.desktopPlatform/aggregate.verified']) {
+  if (!aggregateText.includes(needle)) throw new Error(`aggregate never shows ${needle}`)
+}
+console.log('aggregate: the configured provider is listed as on and verified')
+
+const eac = await pageWith('eac')
+const eacText = textsOf(eac)
+for (const needle of ['settings.desktopPlatform/eac.authorized', 'octocat', 'settings.desktopPlatform/eac.logout']) {
+  if (!eacText.includes(needle)) throw new Error(`eac never shows ${needle}`)
+}
+console.log('eac: signed-in state, the login and the sign-out control drawn')
+
+React.useState = keepUseState
+React.useEffect = keepUseEffect
+globalThis.fetch = realFetch
+
 // 404 means the owner plugin is not installed: the pages must say so rather
 // than surfacing a raw HTTP error.
 rememberedTab = 'gateway'
@@ -211,16 +371,16 @@ registered.sections.length = 0
 plugin.apply(ctx)
 const absentMount = registered.sections[registered.sections.length - 1]
 ownerStatus = 404
-let settled = null
+let capturedState = null
 const restoreState = React.useState
-React.useState = (init) => [typeof init === 'function' ? init() : init, (value) => { settled = typeof value === 'function' ? value(settledState) : value }]
+React.useState = (init) => [typeof init === 'function' ? init() : init, (value) => { capturedState = typeof value === 'function' ? value(settledState) : value }]
 const settledState = { status: 'loading', data: null, error: '', absent: false }
 flushEffects(async () => { await expand(absentMount.component(absentMount.entry.inject())) })
 await new Promise((resolve) => setTimeout(resolve, 20))
 React.useState = restoreState
 ownerStatus = 200
-if (settled === null || settled.absent !== true) {
-  throw new Error(`a 404 from the owner must resolve to the absent state, got ${JSON.stringify(settled)}`)
+if (capturedState === null || capturedState.absent !== true) {
+  throw new Error(`a 404 from the owner must resolve to the absent state, got ${JSON.stringify(capturedState)}`)
 }
 console.log('owner absent (404): every page shows the install hint instead of an error')
 

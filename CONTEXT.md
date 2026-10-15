@@ -31,19 +31,23 @@
 
 ## 2. 插件与界面的对应关系
 
-**1 个插件 → 1 个设置页 → 7 个页签。** 2026-10-14 由原来的「2 插件 / 3 页面」合并而来；
-2026-10-15 加入 FreeModel 的 4 个自建页（原先是挂载对方的整页，因无法隐藏其中某一页而重做）。
+**1 个插件 → 1 个设置页 → 11 个页签。** 2026-10-14 由原来的「2 插件 / 3 页面」合并而来；
+2026-10-15 加入 FreeModel 的 8 个自建页（原先是挂载对方的整页，因无法隐藏其中某一页而重做）。
 
 ```
 dsh-desktop-platform
   └─ settings.section  id: 'desktop-platform'  order: 900  label: t('nav')
-       ├── tab.usage     用量统计
-       ├── tab.archive   归档历史
-       ├── tab.memory    记忆系统
-       ├── tab.upgrade   FreeModel · 插件升级   （/update/*、/reload）
-       ├── tab.saver     FreeModel · 省 Token   （/token-saver、/local-optimize）
-       ├── tab.gateway   FreeModel · 网关设置   （/clients、/forward/*、/chan-gateway）
-       └── tab.routing   FreeModel · 路由       （/combos、/summary）
+       ├── tab.usage      用量统计
+       ├── tab.archive    归档历史
+       ├── tab.memory     记忆系统
+       ├── tab.upgrade    FreeModel · 插件升级   （/update/*、/reload）
+       ├── tab.eac        FreeModel · EAC 模型   （/eac/*）
+       ├── tab.aggregate  FreeModel · 聚合渠道   （/providers*）
+       ├── tab.saver      FreeModel · 省 Token   （/token-saver、/local-optimize）
+       ├── tab.routing    FreeModel · 路由       （/combos、/summary）
+       ├── tab.dashboard  FreeModel · 数据看板   （/stats）
+       ├── tab.logs       FreeModel · 运行日志   （/stats）
+       └── tab.gateway    FreeModel · 网关设置   （/clients、/forward/*、/chan-gateway）
 ```
 
 文案 key（`dsh-desktop-platform/client.js`）：
@@ -56,13 +60,11 @@ nav: '综合平台' / 'Workbench',
 'usage.title': '统计概览' / 'Totals',
 ```
 
-后 4 个页签与 `dsh-our-free-model` 的关系：只读它的 `/api/our-free-model/*`
+后 8 个页签与 `dsh-our-free-model` 的关系：只读它的 `/api/our-free-model/*`
 （同源凭据 `credentials: 'same-origin'`，围栏只放行渲染进程），不持有它的状态；
 `404/401` 一律视为「owner 没装」→ 显示安装提示。
-
-旧的两个 section id（`usage` / `desktop-archive` / `desktop-memory`）已随合并删除。
-
----
+唯一没搬的是「白嫖模型接入」：它读的是被吸收的 channel pack 的 RPC（`usage.tokenLedger*`），
+本机没装那个 pack，拿不到返回结构，所以不凭猜测写。
 
 ## 3. 目录内容
 
@@ -237,11 +239,11 @@ electron-builder 的 NSIS 更新先跑旧版卸载器（`RMDir /r $INSTDIR`）�
 | `var(--dsw-alias-*)` token | 全部色值走 token ✅ |
 | **硬编码色值** | 无 ✅（旧 shell-tools 的 `#fff` 随无用的 `.dshDesktopShellProviderMark` 一起删掉） |
 | `navigator.language` | 0 ✅ |
-| `locale.register/bind` | 各 1 处 ✅，93 个 key 中英齐平（自检脚本断言） |
+| `locale.register/bind` | 各 1 处 ✅，297 个 key 中英齐平（自检脚本断言） |
 | `prefers-reduced-motion` | 有 ✅（页签与额度条过渡在该设置下关闭） |
 | style 注入 | `createElement('style')`，`id = 'dsh-desktop-platform-style'` |
 | 键盘 / ARIA | `role=tablist/tab/tabpanel`、roving tabindex、方向键与 Home/End ✅ |
-| 空态 / 错态 / 禁用 | 三个面板都覆盖 ✅ |
+| 空态 / 错态 / 禁用 | 11 个页签都覆盖 ✅（FreeModel 那 8 页共用 `OwnerShell` 的三态） |
 
 `archive.columnActions` 原为空串 + 硬编码英文 `aria-label="actions"`，合并时改成随语言的操作列表头。
 
