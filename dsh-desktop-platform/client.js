@@ -56,8 +56,10 @@ window.__ModuleLoader__.load({
       { id: 'usage', label: 'tab.usage' },
       { id: 'archive', label: 'tab.archive' },
       { id: 'memory', label: 'tab.memory' },
-      // Another plugin's settings section, mounted here whole. See ForeignPage.
-      { id: 'freemodel', label: 'tab.freemodel', foreign: { sectionId: 'our-free-model', missing: 'freemodel.missing' } }
+      { id: 'upgrade', label: 'tab.upgrade' },
+      { id: 'saver', label: 'tab.saver' },
+      { id: 'gateway', label: 'tab.gateway' },
+      { id: 'routing', label: 'tab.routing' }
     ]
 
     const en = {
@@ -65,8 +67,10 @@ window.__ModuleLoader__.load({
       "tab.usage": 'Usage',
       "tab.archive": 'Archived sessions',
       "tab.memory": 'Memory',
-      "tab.freemodel": 'FreeModel',
-      "freemodel.missing": 'The Our Free Model plugin is not installed or has not finished loading, so its pages are not available here. Install or enable it, then reopen this tab.',
+      "tab.upgrade": 'FreeModel · Upgrade',
+      "tab.saver": 'FreeModel · Save tokens',
+      "tab.gateway": 'FreeModel · Gateway',
+      "tab.routing": 'FreeModel · Routing',
       "usage.title": 'Totals',
       intro: 'Token accounting folded from this profile’s stored session logs. Counts come from what each provider reported, so a route that reports no usage contributes none.',
       refresh: 'Refresh',
@@ -172,15 +176,106 @@ window.__ModuleLoader__.load({
       "memory.handoffFailed": 'Handoff failed: {message}',
       "memory.conventionFailed": 'Could not update the convention: {message}',
       "memory.pickWorkspaceFailed": 'No workspace is registered in this profile yet.',
+      "owner.absent": 'The FreeModel plugin (dsh-our-free-model) is not installed or not loaded, so these pages have nothing to read. Install or enable it, then reload this tab.',
+      "owner.loading": 'Reading FreeModel…',
+      "owner.failed": 'FreeModel request failed: {message}',
+      "owner.retry": 'Retry',
+      "owner.show": 'Show',
+      "owner.hide": 'Hide',
+      "owner.rotate": 'Rotate',
+      "owner.noKey": '(not set)',
+      "upgrade.intro": 'Upgrade the FreeModel plugin in place: it verifies the download, backs the current copy up, replaces the files and hot-reloads. Every step rolls back on failure.',
+      "upgrade.current": 'Current',
+      "upgrade.installed": 'Installed',
+      "upgrade.latest": 'Latest',
+      "upgrade.available": 'Update available: {version}',
+      "upgrade.upToDate": 'Up to date',
+      "upgrade.applying": 'Upgrading…',
+      "upgrade.recovery": 'Recovery required — an upgrade did not finish',
+      "upgrade.backup": 'Backup',
+      "upgrade.checkedAt": 'Last checked',
+      "upgrade.never": 'never',
+      "upgrade.check": 'Check for updates',
+      "upgrade.checking": 'Checking…',
+      "upgrade.checked": 'Checked. The status above is current.',
+      "upgrade.apply": 'Upgrade now',
+      "upgrade.applied": 'Upgraded and reloaded.',
+      "upgrade.reload": 'Hot reload',
+      "upgrade.reloading": 'Reloading…',
+      "upgrade.reloaded": 'Plugin hot-reloaded.',
+      "saver.intro": 'Shrink what goes over the wire: tool output is compressed before the request leaves, and two prompt families change how the assistant answers. Nothing here is sent upstream.',
+      "saver.switches": 'Switches',
+      "saver.master": 'Token saving',
+      "saver.masterHint": 'The master switch governs all three savers below.',
+      "saver.rtk": 'Compress tool output',
+      "saver.rtkHint": 'Rewrites git diff/status/log, grep, find, ls, tree, build logs and repeated log lines in place before the request is sent.',
+      "saver.prompts": 'Prompt shaping',
+      "saver.caveman": 'Caveman (terse answers)',
+      "saver.ponytail": 'Ponytail (minimal implementation)',
+      "saver.local": 'Local answers',
+      "saver.kind.quota": 'Quota probe',
+      "saver.kindHint.quota": 'Answers “how much is left” locally instead of spending a round trip.',
+      "saver.kind.prefix": 'Command prefix',
+      "saver.kindHint.prefix": 'Answers the prefix a permission prompt asks for, locally.',
+      "saver.kind.title": 'Session title',
+      "saver.kindHint.title": 'Generates session titles without a provider call.',
+      "saver.kind.suggestion": 'Suggestion mode',
+      "saver.kindHint.suggestion": 'Answers an empty suggestion turn locally.',
+      "saver.kind.filepath": 'File paths',
+      "saver.kindHint.filepath": 'Extracts the paths a command read, locally.',
+      "saver.savings": 'Measured savings',
+      "saver.noData": 'No measured traffic yet — the numbers appear after a few calls.',
+      "saver.bytesBefore": 'Before',
+      "saver.bytesAfter": 'After',
+      "saver.bytesSaved": 'Saved',
+      "saver.blocks": 'Blocks',
+      "saver.calls": 'Calls',
+      "saver.promptCalls": 'Prompt calls',
+      "gateway.intro": 'The FreeModel plugin runs a loopback gateway other tools on this machine can call. These are its current values; the keys only leave the plugin when you ask.',
+      "gateway.local": 'Local gateway',
+      "gateway.lan": 'LAN relay',
+      "gateway.channel": 'Channel gateway',
+      "gateway.models": 'Published models',
+      "gateway.modelsHint": '{count} model id(s) are published on /v1/models.',
+      "gateway.key": 'API key',
+      "gateway.lanKey": 'Relay key',
+      "gateway.lanPort": 'Relay port',
+      "gateway.port": 'Port',
+      "gateway.running": 'Running',
+      "gateway.stopped": 'Stopped',
+      "gateway.noAddress": 'The relay is not publishing an address right now.',
+      "routing.intro": 'A chain is one model id that stands for an ordered list. The first candidate that produces output wins, and a link that dies before any output is dropped without the caller seeing it.',
+      "routing.chains": 'Chains ({count})',
+      "routing.empty": 'No chain yet. Add one to get a combo: model in the selector, combo: in the gateway.',
+      "routing.newChain": 'New chain',
+      "routing.editChain": 'Edit chain',
+      "routing.name": 'Name',
+      "routing.strategy": 'Strategy',
+      "routing.sticky": 'Sticky rounds',
+      "routing.models": 'Models, one per line',
+      "routing.available": '{count} model id(s) are currently published; paste the ones you want, in order.',
+      "routing.save": 'Save chain',
+      "routing.saving": 'Saving…',
+      "routing.saved": 'Chain saved.',
+      "routing.cancel": 'Cancel',
+      "routing.edit": 'Edit',
+      "routing.enable": 'Enable',
+      "routing.disable": 'Disable',
+      "routing.enabled": 'Enabled',
+      "routing.disabled": 'Disabled',
+      "routing.delete": 'Delete'
     }
+
 
     const zh = {
       nav: '综合平台',
       "tab.usage": '用量统计',
       "tab.archive": '归档历史',
       "tab.memory": '记忆系统',
-      "tab.freemodel": 'FreeModel',
-      "freemodel.missing": '未找到 Our Free Model 插件的页面（插件未安装或尚未加载完成）。装上/启用它之后重新打开本页签即可。',
+      "tab.upgrade": 'FreeModel · 插件升级',
+      "tab.saver": 'FreeModel · 省 Token',
+      "tab.gateway": 'FreeModel · 网关设置',
+      "tab.routing": 'FreeModel · 路由',
       "usage.title": '统计概览',
       intro: '统计来自本 Profile 已存储的会话事件日志。计数取自各服务商实际上报的用量，未上报用量的请求不计入。',
       refresh: '刷新',
@@ -278,7 +373,7 @@ window.__ModuleLoader__.load({
       "memory.handoffGenerate": '立即生成',
       "memory.handoffGenerating": '生成中…',
       "memory.handoffSaved": '交接已写入 MEMORY.md。',
-      "memory.handoffEmpty": "还没有交接记录。离开会话时会自动生成，也可以点下面的按钮。",
+      "memory.handoffEmpty": '还没有交接记录。离开会话时会自动生成，也可以点下面的按钮。',
       "memory.handoffTooShort": '这个会话还太短，暂时没有可交接的内容。',
       "memory.handoffNoModel": '还没有配置默认模型，生成不了摘要。',
       "memory.handoffRuntimeDown": '模型运行时当前不可用。',
@@ -286,8 +381,95 @@ window.__ModuleLoader__.load({
       "memory.handoffFailed": '交接生成失败：{message}',
       "memory.conventionFailed": '无法更新约定：{message}',
       "memory.pickWorkspaceFailed": '当前 Profile 还没有已注册的工作区。',
+      "owner.absent": 'FreeModel 插件（dsh-our-free-model）未安装或尚未加载，这些页面没有数据可读。装上/启用它之后重新打开本页签。',
+      "owner.loading": '正在读取 FreeModel…',
+      "owner.failed": 'FreeModel 请求失败：{message}',
+      "owner.retry": '重试',
+      "owner.show": '显示',
+      "owner.hide": '隐藏',
+      "owner.rotate": '轮换',
+      "owner.noKey": '（未设置）',
+      "upgrade.intro": '就地升级 FreeModel 插件：校验下载 → 备份当前副本 → 替换文件 → 热重载，任一步失败自动回滚。',
+      "upgrade.current": '当前',
+      "upgrade.installed": '已安装',
+      "upgrade.latest": '最新',
+      "upgrade.available": '有新版本：{version}',
+      "upgrade.upToDate": '已是最新',
+      "upgrade.applying": '正在升级…',
+      "upgrade.recovery": '需要恢复——上一次升级没有走完',
+      "upgrade.backup": '备份',
+      "upgrade.checkedAt": '上次检查',
+      "upgrade.never": '从未',
+      "upgrade.check": '检查更新',
+      "upgrade.checking": '检查中…',
+      "upgrade.checked": '已检查，上方状态是最新的。',
+      "upgrade.apply": '立即升级',
+      "upgrade.applied": '已升级并重载。',
+      "upgrade.reload": '热重载',
+      "upgrade.reloading": '重载中…',
+      "upgrade.reloaded": '插件已热重载。',
+      "saver.intro": '减少真正发出去的内容：工具输出在请求前被就地压缩，另有两族提示词改变助手说话的方式。这些都不额外上行。',
+      "saver.switches": '开关',
+      "saver.master": '省 Token 总开关',
+      "saver.masterHint": '总开关统管下面三处设置。',
+      "saver.rtk": '压缩工具输出',
+      "saver.rtkHint": '在请求发出前重写 git diff/status/log、grep、find、ls、tree、构建日志与重复日志行。',
+      "saver.prompts": '提示词档位',
+      "saver.caveman": 'Caveman（电报体）',
+      "saver.ponytail": 'Ponytail（YAGNI 最小实现）',
+      "saver.local": '本地应答',
+      "saver.kind.quota": '额度探测',
+      "saver.kindHint.quota": '「还剩多少额度」在本地回答，不花一次请求。',
+      "saver.kind.prefix": '命令前缀',
+      "saver.kindHint.prefix": '权限提示里要的前缀，在本地回答。',
+      "saver.kind.title": '会话标题',
+      "saver.kindHint.title": '生成会话标题时不调用服务商。',
+      "saver.kind.suggestion": '建议模式',
+      "saver.kindHint.suggestion": '空的建议轮次在本地直接回答。',
+      "saver.kind.filepath": '文件路径',
+      "saver.kindHint.filepath": '本地提取命令读到的路径。',
+      "saver.savings": '实测节省',
+      "saver.noData": '还没有实测流量，跑几次调用后出现数字。',
+      "saver.bytesBefore": '压缩前',
+      "saver.bytesAfter": '压缩后',
+      "saver.bytesSaved": '节省',
+      "saver.blocks": '压缩块',
+      "saver.calls": '统计调用',
+      "saver.promptCalls": '提示词调用',
+      "gateway.intro": 'FreeModel 插件跑了一个本机回环网关，供本机其它工具调用。下面是它当前的状态；Key 只在你主动索要时才离开插件。',
+      "gateway.local": '本机网关',
+      "gateway.lan": '局域网中继',
+      "gateway.channel": '渠道网关',
+      "gateway.models": '已发布的模型',
+      "gateway.modelsHint": '/v1/models 上广播着 {count} 个模型 id。',
+      "gateway.key": 'API Key',
+      "gateway.lanKey": '中继 Key',
+      "gateway.lanPort": '中继端口',
+      "gateway.port": '端口',
+      "gateway.running": '运行中',
+      "gateway.stopped": '未运行',
+      "gateway.noAddress": '中继当前没有对外发布地址。',
+      "routing.intro": '一条链就是一个模型 id，代表一个有序列表。第一个真正产出正文的候选者胜出；在产出正文前失败的链路会被整段丢弃，调用方看不到。',
+      "routing.chains": '链路（{count}）',
+      "routing.empty": '还没有链路。加一条就能得到一个 combo：选择器里叫 combo:，网关上同名。',
+      "routing.newChain": '新建链路',
+      "routing.editChain": '编辑链路',
+      "routing.name": '名称',
+      "routing.strategy": '策略',
+      "routing.sticky": '粘滞轮数',
+      "routing.models": '模型，每行一个',
+      "routing.available": '当前发布了 {count} 个模型 id，按顺序粘进上面的框即可。',
+      "routing.save": '保存链路',
+      "routing.saving": '保存中…',
+      "routing.saved": '链路已保存。',
+      "routing.cancel": '取消',
+      "routing.edit": '编辑',
+      "routing.enable": '启用',
+      "routing.disable": '停用',
+      "routing.enabled": '已启用',
+      "routing.disabled": '已停用',
+      "routing.delete": '删除'
     }
-
     const styles = `
 .dshPlatform{color:var(--dsw-alias-label-primary);flex-direction:column;gap:16px;display:flex}
 .dshPlatformIntro{color:var(--dsw-alias-label-tertiary);margin:0;font-size:13px;line-height:20px}
@@ -345,17 +527,27 @@ window.__ModuleLoader__.load({
 /* 控件文字跟随设置页统一不可选；数值、表格与记忆正文是给人抄走的，保持可选。 */
 .dshPlatformStatValue,.dshPlatformTable td,.dshPlatformDayValue,.dshPlatformError,.dshPlatformTextarea,.dshPlatformHandoff{user-select:text;cursor:text}.dshPlatformActions{gap:8px;white-space:nowrap;display:flex}
 .dshPlatformCheckLabel{align-items:center;gap:8px;color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-primary));font-size:13px;line-height:20px;display:flex}
-/* The owner's masthead (icon + product title) is redundant here: this tab
-   already carries the page name in the tab strip above it. Scoped to this
-   panel so the owner's own settings page keeps its header. */
-#dshPlatformPanel-freemodel .ofm_navbrand,
-#dshPlatformPanel-freemodel .ofm_starlink{display:none}
 .dshPlatformDanger{border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary)}
 .dshPlatformOverlay{position:fixed;z-index:1000;inset:0;background:var(--dsw-alias-bg-base);align-items:center;justify-content:center;padding:24px;display:flex}
 .dshPlatformDialog{border:.5px solid var(--dsw-alias-border-l4);border-radius:16px;background:var(--dsw-alias-bg-layer-1);width:100%;max-width:520px;flex-direction:column;gap:12px;padding:20px 22px;display:flex}
 .dshPlatformDialogTitle{color:var(--dsw-alias-label-primary);margin:0;font-size:15px;font-weight:600;line-height:22px}
 .dshPlatformDialogNote{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:18px}
 .dshPlatformDialogList{border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;background:var(--dsh-alias-bg-layer-2,var(--dsh-alias-bg-layer-2));color:var(--dsh-alias-label-primary);margin:0;padding:8px 10px 8px 26px;max-height:160px;overflow:auto;font-size:12.5px;line-height:19px}
+.dshPlatformPills{gap:6px;flex-wrap:wrap;display:flex}
+.dshPlatformPill{border:.5px solid var(--dsw-alias-border-l4);border-radius:999px;color:var(--dsw-alias-label-secondary,var(--dsw-alias-label-primary));background:var(--dsw-alias-bg-module-platform);padding:3px 10px;font-size:11px;line-height:18px;white-space:nowrap}
+.dshPlatformPill.strong{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2)}
+.dshPlatformPill.ok{color:var(--dsw-alias-state-success-primary)}
+.dshPlatformPill.warn{color:var(--dsw-alias-state-warning-primary,var(--dsw-alias-label-primary))}
+.dshPlatformPill.danger{color:var(--dsw-alias-state-error-primary)}
+.dshPlatformPill.off{opacity:.6}
+.dshPlatformChips{gap:6px;flex-wrap:wrap;display:flex}
+.dshPlatformList{color:var(--dsw-alias-label-primary);margin:0;padding-left:20px;font-size:12.5px;line-height:20px}
+.dshPlatformCode{background:var(--dsw-alias-bg-layer-2);border-radius:6px;color:var(--dsw-alias-label-primary);padding:2px 6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;word-break:break-all}
+.dshPlatformSecret{align-items:center;gap:10px;flex-wrap:wrap;display:flex}
+.dshPlatformSecret .dshPlatformBar{margin-left:auto}
+.dshPlatformStack{gap:10px;display:flex;flex-direction:column}
+.dshPlatformChain{border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:var(--dsw-alias-bg-module-platform);flex-direction:column;gap:8px;padding:10px 12px;display:flex}
+.dshPlatformChainHead{align-items:center;gap:8px;flex-wrap:wrap;display:flex}
 @media (prefers-reduced-motion:reduce){
 .dshPlatformTab,.dshPlatformMeterFill,.dshPlatformMeterFillOver{transition:none}
 }
@@ -1172,7 +1364,7 @@ window.__ModuleLoader__.load({
      * switching tabs and back never discards unsaved text or re-requests what
      * is already on screen.
      */
-    function PlatformSection({ t, scope, host, slots, locale }) {
+    function PlatformSection({ t, scope, host }) {
       const [active, setActive] = React.useState(storedTab)
       const [visited, setVisited] = React.useState(() => new Set([storedTab()]))
       const select = (id) => {
@@ -1182,59 +1374,443 @@ window.__ModuleLoader__.load({
       }
       const panel = (id, child) =>
         visited.has(id) ? React.createElement(Panel, { id, active: active === id }, child) : null
-      const tabPanel = (tab, child) => panel(tab.id, tab.foreign !== undefined
-        ? React.createElement(ForeignPage, { t, slots, locale, sectionId: tab.foreign.sectionId, missing: t(tab.foreign.missing) })
-        : child)
+      const tabPanel = (tab, child) => panel(tab.id, child)
       return React.createElement('div', { className: 'dshPlatform' },
         React.createElement(TabBar, { t, active, onSelect: select }),
         React.createElement('div', { className: 'dshPlatformPanels' },
           tabPanel(TABS[0], React.createElement(UsagePanel, { t, scope })),
           tabPanel(TABS[1], React.createElement(ArchivePanel, { t, host })),
           tabPanel(TABS[2], React.createElement(MemoryPanel, { t })),
-          tabPanel(TABS[3], null)))
+          tabPanel(TABS[3], React.createElement(UpgradePage, { t })),
+          tabPanel(TABS[4], React.createElement(SaverPage, { t })),
+          tabPanel(TABS[5], React.createElement(GatewayPage, { t })),
+          tabPanel(TABS[6], React.createElement(RoutingPage, { t }))))
     }
-    /**
-     * A page contributed by another plugin, rendered inside this one.
-     *
-     * The slot ledger is the one place the shell and the plugins agree on, and
-     * `ctx.slots.entries()` hands back each registration together with its
-     * component — so a page another plugin already wrote can be mounted here
-     * without copying a line of it, and without this plugin having to know
-     * anything about that plugin's routes, storage or credentials. If the owner
-     * is absent (not installed, or not loaded yet) this degrades to a note
-     * rather than an empty page.
-     */
-    function ForeignPage({ t, slots, locale, sectionId, missing }) {
-      // The ledger is the dependency: re-read it whenever any registration
-      // changes, because the owner plugin may mount after this page does.
-      const version = React.useSyncExternalStore(
-        (listener) => slots.subscribe('settings.section', listener),
-        () => slots.getVersion('settings.section')
-      )
-      const entries = slots.entries('settings.section')
-      const entry = entries.find((candidate) => candidate.options.id === sectionId)
-      if (version !== undefined && entry === undefined) {
-        return React.createElement('div', { className: 'dshPlatform' },
-          React.createElement('p', { className: 'dshPlatformNote' }, missing))
+    /* ── FreeModel：自建的四个页面 ───────────────────────────────────────────
+       The state, credentials, ports and the model adapter all belong to the
+       dsh-our-free-model plugin; this is a second front-end over its
+       `/api/our-free-model/*` routes, reached with the renderer's own
+       same-origin credentials (its fence answers 401 to anything outside the
+       page). Nothing here duplicates its storage, and a 404 means the owner is
+       simply not installed — the pages say so instead of failing. */
+
+    const FREE_MODEL_API = '/api/our-free-model'
+
+    async function ownerFetch (path, options) {
+      const response = await fetch(FREE_MODEL_API + path, { credentials: 'same-origin', cache: 'no-store', ...options })
+      if (response.status === 404 || response.status === 401) {
+        const failure = new Error('owner-absent')
+        failure.absent = true
+        throw failure
       }
-      const Page = entry.component
-      // The shell hands a settings section two things this page must supply
-      // itself: `close`, and `t` bound to the registering plugin's own copy
-      // namespace. `t` is read on the first line of that page, so omitting it
-      // throws during render and the whole tab comes up empty — bind the
-      // namespace the registration declares, and fall back to echoing the key
-      // rather than throwing when a registration declares none.
-      // The registration copies `locale` onto the entry itself, beside
-      // `inject` and `store` — `entry.options` only ever carries
-      // key/id/order/label/priority.
-      const namespace = entry.locale
-      const translate = typeof namespace === 'string' && locale !== undefined && locale !== null
-        ? locale.bind(namespace)
-        : (key) => key
-      return React.createElement(Page, { close: () => {}, t: translate })
+      const json = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(json?.error || `HTTP ${response.status}`)
+      return json
     }
 
-    const inject = ['slots', 'locale', 'configForms']
+    const ownerGet = (path) => ownerFetch(path)
+    const ownerPost = (path, body, timeoutMs) => ownerFetch(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body ?? {}),
+      ...timeoutMs === undefined ? {} : { signal: AbortSignal.timeout(timeoutMs) }
+    })
+
+    /** Load a fixed set of owner routes, with a manual reload. */
+    function useOwner (paths, token) {
+      const key = paths.join('|')
+      const [state, setState] = React.useState({ status: 'loading', data: null, error: '', absent: false })
+      const [nonce, setNonce] = React.useState(0)
+      React.useEffect(() => {
+        let alive = true
+        setState((current) => ({ ...current, status: current.data === null ? 'loading' : 'ready' }))
+        Promise.all(key.split('|').map((path) => ownerGet(path)))
+          .then((values) => { if (alive) setState({ status: 'ready', data: values, error: '', absent: false }) })
+          .catch((failure) => {
+            if (!alive) return
+            setState({
+              status: failure.absent === true ? 'absent' : 'error',
+              data: null,
+              error: failure.absent === true ? '' : messageOf(failure),
+              absent: failure.absent === true
+            })
+          })
+        return () => { alive = false }
+      }, [key, nonce])
+      return { ...state, reload: () => setNonce((value) => value + 1), setData: (data) => setState((current) => ({ ...current, data, status: 'ready' })) }
+    }
+
+    function OwnerShell ({ t, state, children }) {
+      if (state.status === 'absent') {
+        return React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformNote' }, t('owner.absent')))
+      }
+      if (state.status === 'loading') {
+        return React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformNote', role: 'status' }, t('owner.loading')))
+      }
+      if (state.status === 'error') {
+        return React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: state.error })),
+          React.createElement('div', { className: 'dshPlatformBar' },
+            React.createElement('button', { className: 'dshPlatformButton', type: 'button', onClick: state.reload }, t('owner.retry'))))
+      }
+      return children
+    }
+
+    function Pill ({ tone, children }) {
+      return React.createElement('span', { className: tone === undefined ? 'dshPlatformPill' : `dshPlatformPill ${tone}` }, children)
+    }
+
+    function SwitchRow ({ t, checked, label, hint, disabled, onChange }) {
+      return React.createElement('div', { className: 'dshPlatformSwitchRow' },
+        React.createElement('input', {
+          type: 'checkbox',
+          className: 'dshPlatformCheckbox',
+          checked: checked === true,
+          disabled: disabled === true,
+          onChange: (event) => onChange(event.target.checked)
+        }),
+        React.createElement('div', { className: 'dshPlatformSwitchCopy' },
+          React.createElement('span', null, label),
+          hint !== undefined && React.createElement('span', { className: 'dshPlatformMeta' }, hint)))
+    }
+
+    /** A secret the owner only hands out on demand: never rendered until asked. */
+    function SecretRow ({ t, label, value, onRotate, busy }) {
+      const [shown, setShown] = React.useState(false)
+      const text = value === undefined || value === null || value === '' ? t('owner.noKey') : value
+      return React.createElement('div', { className: 'dshPlatformSecret' },
+        React.createElement('span', { className: 'dshPlatformMeta' }, label),
+        React.createElement('code', { className: 'dshPlatformCode' }, shown ? text : maskKey(text)),
+        React.createElement('div', { className: 'dshPlatformBar' },
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setShown((value) => !value) }, shown ? t('owner.hide') : t('owner.show')),
+          React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => void onRotate() }, t('owner.rotate'))))
+    }
+
+    function maskKey (text) {
+      if (text === t('owner.noKey')) return text
+      return text.length <= 8 ? '••••' : `••••${text.slice(-4)}`
+    }
+
+    /* ── 插件升级 ──────────────────────────────────────────────────────────── */
+    function UpgradePage ({ t }) {
+      const state = useOwner(['/update/status'])
+      const [busy, setBusy] = React.useState('')
+      const [note, setNote] = React.useState('')
+      const [error, setError] = React.useState('')
+      const run = async (kind, path, label, timeout) => {
+        setBusy(kind)
+        setNote('')
+        setError('')
+        try {
+          await ownerPost(path, {}, timeout)
+          setNote(label)
+          state.reload()
+        } catch (failure) {
+          setError(messageOf(failure))
+        } finally {
+          setBusy('')
+        }
+      }
+      return React.createElement(OwnerShell, { t, state },
+        React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformIntro' }, t('upgrade.intro')),
+          state.data !== null && (() => {
+            const data = state.data[0] ?? {}
+            return React.createElement('div', { className: 'dshPlatformPills' },
+              React.createElement(Pill, { tone: 'strong' }, `${t('upgrade.current')}: ${data.current ?? '—'}`),
+              typeof data.installedVersion === 'string' && React.createElement(Pill, null, `${t('upgrade.installed')}: ${data.installedVersion}`),
+              typeof data.latest === 'string' && data.latest !== '' && React.createElement(Pill, null, `${t('upgrade.latest')}: ${data.latest}`),
+              data.available === true && React.createElement(Pill, { tone: 'warn' }, t('upgrade.available', { version: data.latest })),
+              data.available === false && data.latest !== '' && React.createElement(Pill, { tone: 'ok' }, t('upgrade.upToDate')),
+              data.applying === true && React.createElement(Pill, { tone: 'warn' }, t('upgrade.applying')),
+              data.recoveryRequired === true && React.createElement(Pill, { tone: 'danger' }, t('upgrade.recovery')),
+              React.createElement(Pill, null, `${t('upgrade.checkedAt')}: ${typeof data.checkedAt === 'number' ? new Date(data.checkedAt).toLocaleString() : t('upgrade.never')}`),
+              typeof data.recoveryBackup === 'string' && data.recoveryBackup !== '' && React.createElement(Pill, { tone: 'danger' }, `${t('upgrade.backup')}: ${data.recoveryBackup}`))
+          })(),
+          note !== '' && React.createElement('p', { className: 'dshPlatformNoteSuccess', role: 'status' }, note),
+          error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error })),
+          React.createElement('div', { className: 'dshPlatformBar' },
+            React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void run('check', '/update/check', t('upgrade.checked'), 60_000) } }, busy === 'check' ? t('upgrade.checking') : t('upgrade.check')),
+            state.data !== null && state.data[0]?.available === true && React.createElement('button', {
+              className: 'dshPlatformButton dshPlatformDanger',
+              type: 'button',
+              disabled: busy !== '' || state.data[0].applying === true,
+              onClick: () => { void run('apply', '/update/apply', t('upgrade.applied'), 600_000) }
+            }, busy === 'apply' ? t('upgrade.applying') : t('upgrade.apply')),
+            React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy !== '', onClick: () => { void run('reload', '/reload', t('upgrade.reloaded'), 30_000) } }, busy === 'reload' ? t('upgrade.reloading') : t('upgrade.reload'))),
+          state.data !== null && typeof state.data[0]?.notes === 'string' && state.data[0].notes !== '' && React.createElement('p', { className: 'dshPlatformNote' }, state.data[0].notes)))
+    }
+
+    /* ── 省 Token ──────────────────────────────────────────────────────────── */
+    const CAVEMAN_LEVELS = ['off', 'lite', 'full', 'ultra', 'wenyan-lite', 'wenyan', 'wenyan-ultra']
+    const PONYTAIL_LEVELS = ['off', 'lite', 'full', 'ultra']
+    const LOCAL_KINDS = ['quota', 'prefix', 'title', 'suggestion', 'filepath']
+
+    function SaverPage ({ t }) {
+      const state = useOwner(['/token-saver', '/local-optimize'])
+      const [busy, setBusy] = React.useState(false)
+      const [note, setNote] = React.useState('')
+      const [error, setError] = React.useState('')
+      const write = async (path, patch) => {
+        setBusy(true)
+        setNote('')
+        setError('')
+        try {
+          await ownerPost(path, patch)
+          state.reload()
+        } catch (failure) {
+          setError(messageOf(failure))
+        } finally {
+          setBusy(false)
+        }
+      }
+      return React.createElement(OwnerShell, { t, state },
+        React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformIntro' }, t('saver.intro')),
+          state.data !== null && (() => {
+            const saver = state.data[0] ?? {}
+            const local = state.data[1] ?? {}
+            const savings = saver.savings ?? null
+            return React.createElement(React.Fragment, null,
+              React.createElement(Card, { title: t('saver.switches') },
+                React.createElement(SwitchRow, {
+                  t,
+                  checked: saver.enabled !== false,
+                  label: t('saver.master'),
+                  hint: t('saver.masterHint'),
+                  disabled: busy,
+                  onChange: (checked) => { void write('/token-saver', { enabled: checked }) }
+                }),
+                React.createElement(SwitchRow, {
+                  t,
+                  checked: saver.rtk !== false,
+                  label: t('saver.rtk'),
+                  hint: t('saver.rtkHint'),
+                  disabled: busy,
+                  onChange: (checked) => { void write('/token-saver', { rtk: checked }) }
+                })),
+              React.createElement(Card, { title: t('saver.prompts') },
+                React.createElement('div', { className: 'dshPlatformFields' },
+                  React.createElement('label', { className: 'dshPlatformField' },
+                    React.createElement('span', { className: 'dshPlatformMeta' }, t('saver.caveman')),
+                    React.createElement('select', {
+                      className: 'dshPlatformSelect',
+                      value: saver.prompts?.caveman ?? 'off',
+                      disabled: busy,
+                      onChange: (event) => { void write('/token-saver', { prompts: { caveman: event.target.value } }) }
+                    }, CAVEMAN_LEVELS.map((level) => React.createElement('option', { key: level, value: level }, level)))),
+                  React.createElement('label', { className: 'dshPlatformField' },
+                    React.createElement('span', { className: 'dshPlatformMeta' }, t('saver.ponytail')),
+                    React.createElement('select', {
+                      className: 'dshPlatformSelect',
+                      value: saver.prompts?.ponytail ?? 'off',
+                      disabled: busy,
+                      onChange: (event) => { void write('/token-saver', { prompts: { ponytail: event.target.value } }) }
+                    }, PONYTAIL_LEVELS.map((level) => React.createElement('option', { key: level, value: level }, level)))))),
+              React.createElement(Card, { title: t('saver.local') },
+                React.createElement('div', { className: 'dshPlatformGrid' }, LOCAL_KINDS.map((kind) => React.createElement('div', { className: 'dshPlatformStat', key: kind },
+                  React.createElement(SwitchRow, {
+                    t,
+                    checked: local[kind] !== false,
+                    label: t(`saver.kind.${kind}`),
+                    hint: t(`saver.kindHint.${kind}`),
+                    disabled: busy,
+                    onChange: (checked) => { void write('/local-optimize', { [kind]: checked }) }
+                  }))))),
+              React.createElement(Card, { title: t('saver.savings') },
+                savings === null
+                  ? React.createElement('p', { className: 'dshPlatformNote' }, t('saver.noData'))
+                  : React.createElement(React.Fragment, null,
+                    React.createElement('div', { className: 'dshPlatformGrid' },
+                      React.createElement(Stat, { label: t('saver.bytesBefore'), value: `${formatNumber(savings.bytesBefore)} B` }),
+                      React.createElement(Stat, { label: t('saver.bytesAfter'), value: `${formatNumber(savings.bytesAfter)} B` }),
+                      React.createElement(Stat, { label: t('saver.bytesSaved'), value: `${formatNumber(savings.saved)} B` }),
+                      React.createElement(Stat, { label: t('saver.blocks'), value: formatNumber(savings.blocks) }),
+                      React.createElement(Stat, { label: t('saver.calls'), value: formatNumber(savings.calls) }),
+                      React.createElement(Stat, { label: t('saver.promptCalls'), value: formatNumber(savings.promptCalls) })),
+                    React.createElement('div', {
+                      className: 'dshPlatformMeter',
+                      role: 'progressbar',
+                      'aria-valuemin': 0,
+                      'aria-valuemax': 100,
+                      'aria-valuenow': Math.min(100, Math.round(Number(savings.percent) || 0)),
+                      'aria-label': t('saver.savings')
+                    }, React.createElement('div', {
+                      className: Number(savings.percent) > 0 ? 'dshPlatformMeterFill' : 'dshPlatformMeterFillOver',
+                      style: { width: `${Math.min(100, Math.max(0, Number(savings.percent) || 0))}%` }
+                    })))))
+          })(),
+          note !== '' && React.createElement('p', { className: 'dshPlatformNoteSuccess', role: 'status' }, note),
+          error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error }))))
+    }
+
+    /* ── 网关设置 ──────────────────────────────────────────────────────────── */
+    function GatewayPage ({ t }) {
+      const state = useOwner(['/clients', '/forward/key', '/forward/lan/key', '/forward/lan/addresses', '/chan-gateway'])
+      const [busy, setBusy] = React.useState('')
+      const [error, setError] = React.useState('')
+      const rotate = async (kind, path) => {
+        setBusy(kind)
+        setError('')
+        try {
+          await ownerPost(path, {})
+          state.reload()
+        } catch (failure) {
+          setError(messageOf(failure))
+        } finally {
+          setBusy('')
+        }
+      }
+      return React.createElement(OwnerShell, { t, state },
+        React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformIntro' }, t('gateway.intro')),
+          state.data !== null && (() => {
+            const clients = state.data[0] ?? {}
+            const forward = clients.forward ?? {}
+            const lan = forward.lan ?? {}
+            const channel = state.data[4] ?? {}
+            const addresses = state.data[3]?.addresses ?? []
+            return React.createElement(React.Fragment, null,
+              React.createElement(Card, { title: t('gateway.local') },
+                React.createElement('div', { className: 'dshPlatformPills' },
+                  React.createElement(Pill, { tone: forward.running === true ? 'ok' : 'off' }, forward.running === true ? t('gateway.running') : t('gateway.stopped')),
+                  React.createElement(Pill, { tone: 'strong' }, `${t('gateway.port')}: ${forward.port ?? 0}`)),
+                React.createElement(SecretRow, {
+                  t,
+                  label: t('gateway.key'),
+                  value: state.data[1]?.key,
+                  busy: busy !== '',
+                  onRotate: () => { void rotate('key', '/forward/rotate') }
+                })),
+              React.createElement(Card, { title: t('gateway.lan') },
+                React.createElement('div', { className: 'dshPlatformPills' },
+                  React.createElement(Pill, { tone: lan.running === true ? 'ok' : 'off' }, lan.running === true ? t('gateway.running') : t('gateway.stopped')),
+                  React.createElement(Pill, { tone: 'strong' }, `${t('gateway.lanPort')}: ${lan.port ?? 0}`)),
+                React.createElement(SecretRow, {
+                  t,
+                  label: t('gateway.lanKey'),
+                  value: state.data[2]?.key,
+                  busy: busy !== '',
+                  onRotate: () => { void rotate('lan', '/forward/lan/rotate') }
+                }),
+                addresses.length === 0
+                  ? React.createElement('p', { className: 'dshPlatformNote' }, t('gateway.noAddress'))
+                  : React.createElement('ul', { className: 'dshPlatformList' }, addresses.map((address) => React.createElement('li', { key: address }, React.createElement('code', { className: 'dshPlatformCode' }, address)))))),
+              React.createElement(Card, { title: t('gateway.channel') },
+                React.createElement('div', { className: 'dshPlatformPills' },
+                  React.createElement(Pill, { tone: channel.running === true ? 'ok' : 'off' }, channel.running === true ? t('gateway.running') : t('gateway.stopped')),
+                  channel.port !== undefined && React.createElement(Pill, { tone: 'strong' }, `${t('gateway.port')}: ${channel.port}`)),
+                channel.note !== undefined && React.createElement('p', { className: 'dshPlatformNote' }, channel.note)),
+              typeof clients.models === 'object' && Array.isArray(clients.models) && React.createElement(Card, { title: t('gateway.models') },
+                React.createElement('p', { className: 'dshPlatformNote' }, t('gateway.modelsHint', { count: clients.models.length })),
+                React.createElement('div', { className: 'dshPlatformChips' }, clients.models.slice(0, 40).map((id) => React.createElement(Pill, { key: id }, id))))
+          })(),
+          error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error }))))
+    }
+
+    /* ── 路由（降级链）────────────────────────────────────────────────────── */
+    function RoutingPage ({ t }) {
+      const state = useOwner(['/combos', '/summary'])
+      const [editing, setEditing] = React.useState(null)
+      const [busy, setBusy] = React.useState(false)
+      const [note, setNote] = React.useState('')
+      const [error, setError] = React.useState('')
+      const blank = { id: '', name: '', models: [], strategy: 'fallback', stickyLimit: 1, enabled: true }
+      const save = async (chains) => {
+        setBusy(true)
+        setNote('')
+        setError('')
+        try {
+          await ownerPost('/combos', { combos: chains })
+          setNote(t('routing.saved'))
+          setEditing(null)
+          state.reload()
+        } catch (failure) {
+          setError(messageOf(failure))
+        } finally {
+          setBusy(false)
+        }
+      }
+      return React.createElement(OwnerShell, { t, state },
+        React.createElement('div', { className: 'dshPlatform' },
+          React.createElement('p', { className: 'dshPlatformIntro' }, t('routing.intro')),
+          state.data !== null && (() => {
+            const chains = state.data[0]?.combos ?? []
+            const models = (state.data[1]?.models ?? []).map((row) => (typeof row === 'string' ? row : row.id))
+            const without = (id) => chains.filter((chain) => chain.id !== id)
+            return React.createElement(React.Fragment, null,
+              editing !== null && React.createElement(Card, { title: editing.id === '' ? t('routing.newChain') : t('routing.editChain') },
+                React.createElement('div', { className: 'dshPlatformFields' },
+                  React.createElement('label', { className: 'dshPlatformField' },
+                    React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.name')),
+                    React.createElement('input', {
+                      className: 'dshPlatformInput',
+                      value: editing.name,
+                      placeholder: 'my-chain',
+                      onChange: (event) => setEditing({ ...editing, name: event.target.value })
+                    })),
+                  React.createElement('label', { className: 'dshPlatformField' },
+                    React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.strategy')),
+                    React.createElement('select', {
+                      className: 'dshPlatformSelect',
+                      value: editing.strategy,
+                      onChange: (event) => setEditing({ ...editing, strategy: event.target.value })
+                    },
+                      React.createElement('option', { value: 'fallback' }, 'fallback'),
+                      React.createElement('option', { value: 'round-robin' }, 'round-robin'))),
+                  React.createElement('label', { className: 'dshPlatformField' },
+                    React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.sticky')),
+                    React.createElement('input', {
+                      className: 'dshPlatformInput',
+                      type: 'number',
+                      min: '1',
+                      value: String(editing.stickyLimit ?? 1),
+                      onChange: (event) => setEditing({ ...editing, stickyLimit: Math.max(1, Number(event.target.value) || 1) })
+                    }))),
+                React.createElement('label', { className: 'dshPlatformField' },
+                  React.createElement('span', { className: 'dshPlatformMeta' }, t('routing.models')),
+                  React.createElement('textarea', {
+                    className: 'dshPlatformTextarea',
+                    spellCheck: false,
+                    rows: 4,
+                    value: (editing.models ?? []).join('\n'),
+                    placeholder: 'provider/model',
+                    onChange: (event) => setEditing({ ...editing, models: event.target.value.split('\n').map((line) => line.trim()).filter((line) => line !== '') })
+                  })),
+                models.length > 0 && React.createElement('p', { className: 'dshPlatformMeta' }, t('routing.available', { count: models.length })),
+                React.createElement('div', { className: 'dshPlatformBar' },
+                  React.createElement('button', {
+                    className: 'dshPlatformButton',
+                    type: 'button',
+                    disabled: busy || editing.name.trim() === '' || (editing.models ?? []).length === 0,
+                    onClick: () => { void save(editing.id === '' ? [...chains, { ...editing, name: editing.name.trim() }] : chains.map((chain) => (chain.id === editing.id ? editing : chain))) }
+                  }, busy ? t('routing.saving') : t('routing.save')),
+                  React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setEditing(null) }, t('routing.cancel')))),
+              React.createElement(Card, { title: t('routing.chains', { count: chains.length }) },
+                React.createElement('div', { className: 'dshPlatformBar' },
+                  React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setEditing({ ...blank }) }, t('routing.newChain')),
+                  React.createElement('span', { className: 'dshPlatformBarSpacer' })),
+                chains.length === 0
+                  ? React.createElement('p', { className: 'dshPlatformNote' }, t('routing.empty'))
+                  : React.createElement('div', { className: 'dshPlatformStack' }, chains.map((chain) => React.createElement('div', { className: 'dshPlatformChain', key: chain.id },
+                    React.createElement('div', { className: 'dshPlatformChainHead' },
+                      React.createElement('code', { className: 'dshPlatformCode' }, `combo:${chain.id}`),
+                      React.createElement(Pill, { tone: chain.enabled === false ? 'off' : 'ok' }, chain.enabled === false ? t('routing.disabled') : t('routing.enabled')),
+                      React.createElement(Pill, null, chain.strategy ?? 'fallback'),
+                      typeof chain.stickyLimit === 'number' && chain.strategy === 'round-robin' && React.createElement(Pill, null, `${t('routing.sticky')}: ${chain.stickyLimit}`)),
+                    React.createElement('p', { className: 'dshPlatformMeta' }, (chain.models ?? []).join(' → ')),
+                    React.createElement('div', { className: 'dshPlatformBar' },
+                      React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => setEditing({ ...chain, models: [...(chain.models ?? [])] }) }, t('routing.edit')),
+                      React.createElement('button', { className: 'dshPlatformButton', type: 'button', disabled: busy, onClick: () => { void save(chains.map((item) => (item.id === chain.id ? { ...item, enabled: item.enabled === false } : item))) } }, chain.enabled === false ? t('routing.enable') : t('routing.disable')),
+                      React.createElement('button', { className: 'dshPlatformButton dshPlatformDanger', type: 'button', disabled: busy, onClick: () => { void save(without(chain.id)) } }, t('routing.delete'))))))))
+          })(),
+          note !== '' && React.createElement('p', { className: 'dshPlatformNoteSuccess', role: 'status' }, note),
+          error !== '' && React.createElement('p', { className: 'dshPlatformError', role: 'alert' }, t('owner.failed', { message: error }))))
+    }
+
+    const inject = []
     function apply(ctx) {
       installStyles()
       // Permanent deletion goes through the Host's own `session.delete`
@@ -1259,7 +1835,7 @@ window.__ModuleLoader__.load({
             id: 'desktop-platform',
             order: SECTION_ORDER,
             label: () => t('nav'),
-            inject: () => ({ t, scope, host, slots: ctx.slots, locale: ctx.locale })
+            inject: () => ({ t, scope, host })
           },
           PlatformSection
         )

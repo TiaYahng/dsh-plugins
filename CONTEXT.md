@@ -31,14 +31,19 @@
 
 ## 2. 插件与界面的对应关系
 
-**1 个插件 → 1 个设置页 → 3 个页签。** 2026-10-14 由原来的「2 插件 / 3 页面」合并而来。
+**1 个插件 → 1 个设置页 → 7 个页签。** 2026-10-14 由原来的「2 插件 / 3 页面」合并而来；
+2026-10-15 加入 FreeModel 的 4 个自建页（原先是挂载对方的整页，因无法隐藏其中某一页而重做）。
 
 ```
 dsh-desktop-platform
   └─ settings.section  id: 'desktop-platform'  order: 900  label: t('nav')
-       ├── tab.usage    用量统计
-       ├── tab.archive  归档历史
-       └── tab.memory   记忆系统
+       ├── tab.usage     用量统计
+       ├── tab.archive   归档历史
+       ├── tab.memory    记忆系统
+       ├── tab.upgrade   FreeModel · 插件升级   （/update/*、/reload）
+       ├── tab.saver     FreeModel · 省 Token   （/token-saver、/local-optimize）
+       ├── tab.gateway   FreeModel · 网关设置   （/clients、/forward/*、/chan-gateway）
+       └── tab.routing   FreeModel · 路由       （/combos、/summary）
 ```
 
 文案 key（`dsh-desktop-platform/client.js`）：
@@ -51,6 +56,10 @@ nav: '综合平台' / 'Workbench',
 'usage.title': '统计概览' / 'Totals',
 ```
 
+后 4 个页签与 `dsh-our-free-model` 的关系：只读它的 `/api/our-free-model/*`
+（同源凭据 `credentials: 'same-origin'`，围栏只放行渲染进程），不持有它的状态；
+`404/401` 一律视为「owner 没装」→ 显示安装提示。
+
 旧的两个 section id（`usage` / `desktop-archive` / `desktop-memory`）已随合并删除。
 
 ---
@@ -60,7 +69,7 @@ nav: '综合平台' / 'Workbench',
 ```
 E:\ai\dsh-plugins\
 ├── dsh-desktop-platform\
-│   ├── client.js              客户端：设置页 + 页签壳 + 三个面板（未拆子文件，见 7.4）
+│   ├── client.js              客户端：设置页 + 页签壳 + 七个面板（未拆子文件，见 7.4）
 │   ├── index.js               服务端入口：name / inject / Config / apply
 │   ├── server\http.js         loopback + JSON 共用管道、路由表
 │   ├── server\workspace.js    工作区根目录收敛、UTF-8 读取
@@ -416,41 +425,42 @@ archive state」，它只清注册表和归档集合，不删日志。
 
 ---
 
-## 15. 跨插件挂载设置页：slot 账本是公开的检查面
+## 15. 跨插件页面：挂载走得通，但页签集合作不了主
 
-2026-10-15。综合平台的第 4 个页签「FreeModel」把 `dsh-our-free-model` 的整个设置页挂进来了，一行代码都没抄。
+2026-10-15。先试过把 `dsh-our-free-model` 已注册的设置页整块挂进综合平台（`ForeignPage`），
+一行代码没抄；用户要求「删掉免费模型那一页」之后**整块推翻**，改为自建那 4 页。
+
+### 挂载为什么不行（结论，别再走回头路）
 
 ```js
 // dsh-client-ui-slots/lib/index.js:205
 const entry = { component, options: { key?, id?, order?, label?, priority? }, inject?, ... }
 // :264  entries(key) —— 注释原文：The raw SlotCore.entries view stays the inspection surface
-```
-
-于是任何插件都能写下：
-
-```js
 const entry = ctx.slots.entries('settings.section').find((e) => e.options.id === 'our-free-model')
-React.createElement(entry.component, { close: () => {}, t: ctx.locale.bind(entry.options.locale) })
+React.createElement(entry.component, { close: () => {}, t: ctx.locale.bind(entry.locale) })
 ```
 
-要点：
+技术上是通的（账本读的是组件本身；`inject` 没声明传 `{}`；宿主把设置页渲染成
+`renderSlot('settings.section', { close }, { only: active })`，所以组件要能吃一个 `close`；
+对账本变化用 `slots.getVersion(key)` + `slots.subscribe(key, cb)`）。
+但**页签条是对方组件内部的 state，从外部无法隐藏其中某一项**：挂载 = 一次接受它全部 10 个页签，
+其中第一页正是用户不要的「免费模型」。要控制页签集合只能自建前端。
 
-- **账本读的是组件本身**，不是快照；`inject` 没有声明时传 `{}` 即可。
-- 宿主把设置页渲染成 `renderSlot('settings.section', { close }, { only: active })`，所以被挂载的
-  组件要能接受一个 `close`（不调用即可）。
-- 要对账本变化有反应，用 `slots.getVersion(key)` + `slots.subscribe(key, cb)`
-  （宿主自己就是这么用的），因为 owner 插件可能晚于本页签加载。
-- 被挂载方若是模块级单例（例：`dsh-our-free-model` 的 `EventSource`），挂两次也只开一条连接。
+顺带记下两个坑（当时各踩一次，现在代码里没有，但下次挂载别人页面还会遇到）：
 
-**跨插件读不到数据**：它的 `/api/our-free-model/*` 自带信任围栏，外部 curl 一律 401
-（认证 cookie 只在渲染进程里）。所以要么像现在这样整页挂载（数据在渲染进程内自取），
-要么在自己的页签里用同源凭据重新请求它的 API 做第二套界面——后者按页做，不能隐藏
-它组件内部的页签条。
-- **手动挂载设置页必须自带 `t`。** `dsh-our-free-model` 的页面第一行就是
-  `props.t(x)`，缺了会在渲染期抛错、页签整块空白（2026-10-15 踩过）。
-  宿主 shell 靠注册项上的 `locale: NS` 绑出它，手动挂载要自己
-  `ctx.locale.bind(entry.locale)`；注册项没声明命名空间时退化成回显 key 而不是抛错。
-- **命名空间在 entry 顶层，不在 `entry.options`。** `SlotCore.register`（`dsh-client-ui-slots`
-  :205）只把 `key/id/order/label/priority` 收进 `options`，`locale`/`inject`/`store`/`children`
-  与 `component` 平级。读成 `entry.options.locale` 会静默走回退分支，界面全是原始 key
-  （2026-10-15 踩过：截图里一片 `nav.tab.free`）。
+- **手动挂载设置页必须自带 `t`。** `dsh-our-free-model` 的页面第一行就是 `props.t(x)`，
+  缺了会在渲染期抛错、页签整块空白。命名空间在 **`entry.locale`**（与 `component`/`inject` 同级），
+  不在 `entry.options`——`SlotCore.register` 只把 `key/id/order/label/priority` 收进 `options`。
+  读错会静默走回退分支，界面全是原始 key（当时截图里一片 `nav.tab.free`）。
+
+### 自建页的边界
+
+数据仍走它的 `/api/our-free-model/*`，但那条路有信任围栏：外部 curl 一律 401，
+认证 cookie 只在渲染进程里。所以请求必须带 `credentials: 'same-origin'`，页面只能在宿主页面里跑。
+
+- `404` / `401` 统一映射成「owner 不在」（插件没装或还没加载）→ 显示安装提示，不抛 HTTP 错误。
+- 前端不复制它的存储与逻辑，只读它的接口；它升级，这些页跟着升级。
+- `useOwner(paths)` 一次并发读多条路由并给出手动 `reload()`；`OwnerShell` 统一处理
+  loading / absent / error 三态。
+- 长任务单独给超时：`/update/check` 60 s、`/update/apply` 600 s（`AbortSignal.timeout`）。
+- Key 默认打码，点「显示」才明文；轮换走它自己的 `/forward/rotate`、`/forward/lan/rotate`。

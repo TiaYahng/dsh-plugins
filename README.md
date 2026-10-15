@@ -9,27 +9,29 @@
 
 | 插件 | 设置界面 | 服务端路由 |
 | --- | --- | --- |
-| `dsh-desktop-platform/` | 综合平台（1 个页面，3 个页签） | `/dsh-desktop/usage-stats/summary`、`/dsh-desktop/shell/archive.list`、`/dsh-desktop/shell/workspaces`、`/dsh-desktop/shell/archive.restore`、`/dsh-desktop/shell/memory`、`/dsh-desktop/shell/convention`、`/dsh-desktop/shell/handoff` |
+| `dsh-desktop-platform/` | 综合平台（1 个页面，7 个页签） | `/dsh-desktop/usage-stats/summary`、`/dsh-desktop/shell/archive.list`、`/dsh-desktop/shell/workspaces`、`/dsh-desktop/shell/archive.restore`、`/dsh-desktop/shell/memory`、`/dsh-desktop/shell/convention`、`/dsh-desktop/shell/handoff` |
 
-一个插件、一个设置页、三个页签：
+一个插件、一个设置页、七个页签：
 
 ```
 综合平台  id: 'desktop-platform'  order: 900
   ├── 用量统计   token / 积分统计
   ├── 归档历史   归档会话还原与删除
   ├── 记忆系统   MEMORY.md、记忆约定、会话交接
-  └── Our Free Model   挂载 dsh-our-free-model 自己的设置页（见下）
-  ├── 用量统计   token / 积分统计
-  ├── 归档历史   归档会话还原
-  └── 记忆系统   MEMORY.md、记忆约定、会话交接
+  ├── FreeModel · 插件升级
+  ├── FreeModel · 省 Token
+  ├── FreeModel · 网关设置
+  └── FreeModel · 路由
 ```
+
+后 4 个页签自己实现前端，数据走 `dsh-our-free-model` 的 `/api/our-free-model/*`（见下）。
 
 页签在第一次打开时挂载，之后保持挂载（隐藏而非卸载）——记忆编辑器卸载会把没保存的输入丢掉。
 
 文件划分：
 
 ```
-client.js              客户端：注册设置页、页签壳、三个面板
+client.js              客户端：注册设置页、页签壳、七个面板
 index.js               服务端入口：name / inject / Config / apply
 server/http.js         loopback + JSON 的共用管道、路由表
 server/workspace.js    工作区根目录收敛、UTF-8 读取
@@ -44,50 +46,48 @@ cordis.patch.yml       把插件挂进 profile 的配置树
 （`dsh-client-modules`）的 `require` 只认平台 seed 名与已注册的模块 id，**没有同步相对导入**；
 拆文件只能走 `require.async('./client.xxx.js')` 的异步 chunk，多一层会失败的加载路径，不值得。
 
-## FreeModel：把别的插件的页面挂进综合平台
+## FreeModel：把别的插件的页面重做进综合平台
 
-综合平台的第 4 个页签「FreeModel」不是复刻，而是**直接把那个插件已注册的组件取出来渲染**：
+综合平台有 4 个页签属于 FreeModel（`dsh-our-free-model`）：**插件升级 / 省 Token / 网关设置 / 路由**。
+它们不是复刻界面，也不是把那个插件已注册的组件取来渲染，而是**自己实现的一套前端**：
+数据与写操作仍然走它自己的 `/api/our-free-model/*`，它升级，这些页跟着升级；
+综合平台不持有它的任何状态。
+
+为什么不用挂载（`ctx.slots.entries('settings.section').find(...)` → `createElement(entry.component)`）：
+挂载可行（entry 自带 `component` 与 `inject`），但它那 10 个页签会**整排一起显示**，
+页签条是它组件内部的 state，从外部无法隐藏其中一个——用户要的「免费模型」这一页删不掉。
+按页重做是唯一能真正决定页签集合的做法。
+
+### 围栏与降级
+
+它的路由有信任围栏：外部 curl 一律 401，**只有渲染进程里带同源凭据的请求能进**。
 
 ```js
-const entry = ctx.slots.entries('settings.section').find((e) => e.options.id === 'our-free-model')
-React.createElement(entry.component, { close: () => {}, t: ctx.locale.bind(entry.options.locale) })
+fetch('/api/our-free-model' + path, { credentials: 'same-origin', cache: 'no-store' })
 ```
 
-`ctx.slots.entries()` 返回的 entry 自带 `component` 与 `inject`（见 `dsh-client-ui-slots`
-`SlotCore.entries`：「The raw SlotCore.entries view stays the inspection surface」），所以一个插件
-写好的设置页可以被另一个插件挂载，宿主不提供任何额外的跨插件 API，也不需要知道对方的
-路由、存储或凭据。
+所以这些页面必须在宿主页面里跑，不能自建窗口或后台轮询。`404` / `401` 统一当成
+「owner 不在」（插件没装或没加载）→ 显示一句安装提示，而不是把 HTTP 错误甩到界面上。
 
-带来什么：免费模型 / EAC 模型 / 白嫖模型接入 / 聚合渠道 / 省 Token / 路由 / 数据看板 /
-运行日志 / 网关设置 / 插件升级，全部原样可用，数据与写操作都走那个插件自己的
-`/api/our-free-model/*`；它升级，这些页跟着升级。综合平台不持有它的任何状态。
+### 每页读哪些路由
 
-代价与边界：
+| 页签 | 读 | 写 |
+| --- | --- | --- |
+| 插件升级 | `/update/status` | `/update/check`、`/update/apply`、`/reload` |
+| 省 Token | `/token-saver`、`/local-optimize` | `/token-saver`、`/local-optimize` |
+| 网关设置 | `/clients`、`/forward/key`、`/forward/lan/key`、`/forward/lan/addresses`、`/chan-gateway` | `/forward/rotate`、`/forward/lan/rotate` |
+| 路由 | `/combos`、`/summary` | `/combos` |
 
-- **它那 10 个页签（含第一页「免费模型」）会一并显示。** 页签条是它组件内部的 state，
-  从外部无法隐藏其中一个；要藏掉第一页只能把需要的几页按 `/api/our-free-model/*`
-  重新实现成第二套界面（数据仍然来自它），按页做。
-两个必须手动补上的东西（各踩过一次）：
+Key 一律**默认打码**，点「显示」才明文；轮换走它自己的 `/forward/*/rotate`。
 
-- **`t` 不能省。** 那个插件的页面第一行就读 `props.t`，缺了会在渲染时抛错，整个页签白屏。
-  宿主 shell 靠注册项声明的命名空间绑出它，手动挂载要自己
-  `ctx.locale.bind(entry.locale)`；声明缺失时退化为回显 key，而不是抛错。
-- **命名空间在 entry 顶层，不在 entry.options 里。** `SlotCore.register` 只把
-  `key/id/order/label/priority` 收进 `options`，而 `locale`/`inject`/`store`/`children`
-  与 `component` 同级。读错地方会静默退化成回显，界面全是 `nav.tab.free` 这样的原始 key。
+`/update/check` 与 `/update/apply` 是长任务，分别给 60 s / 600 s 的
+`AbortSignal.timeout`，其余请求不设超时。
 
-另外用一条**限定在本页签内**的 CSS 藏掉它的报头（图标 + 产品名，`.ofm_navbrand`）——
-页签条和 Star 按钮保留，它自己那个设置页的报头也不受影响：
+### 还没搬过来的页
 
-```css
-#dshPlatformPanel-freemodel .ofm_navbrand{display:none}
-```
-
-文案语言跟随应用语言：那套界面用的是它自己注册的中英词典，通过上面的 `t` 取出。
-
-- 那个插件没装 / 还没加载完时，本页签显示一句提示，不会白屏。
-- 它的 `EventSource` 是模块级单例（源码注释：One EventSource for the whole app surface），
-  页面被挂载两次也只开一条连接。
+FreeModel 自己还有：聚合渠道 / EAC 模型 / 白嫖模型接入 / 数据看板 / 运行日志。
+要搬就照上面的模式一页一页加，`useOwner(paths)` + `OwnerShell` 已经把加载、缺插件、
+重试三态做好了。
 
 ## 归档里删除会话
 
@@ -113,8 +113,10 @@ node .\test\archive-delete.test.mjs
 两个都不需要装依赖：
 
 - `platform-client.test.mjs` 用假的 `window` / `document` / `react` 跑一遍 `apply()`，断言
-  注册了且只注册了 1 个 `settings.section`、4 个页签、中英 key 齐平、样式里没有硬编码色值、
-  排序落在所有内置页面之后，以及第 4 个页签在 owner 缺席时降级为提示、在场时渲染 owner 组件。
+  注册了且只注册了 1 个 `settings.section`、7 个页签、中英 key 齐平（201 个）、样式里没有硬编码色值、
+  排序落在所有内置页面之后；再逐个记起那 4 个 FreeModel 页签，断言它们读的正是上表里的路由、
+  每个请求都带 `credentials: 'same-origin'`，以及 owner 返 404 时落到「未安装」提示而不是报错。
+  顺带断言源码里再也找不到挂载那套（`ForeignPage` / `.ofm_navbrand` / `tab.freemodel`）。
 - `archive-delete.test.mjs` 用一个带状态的迷你 React 挂载真实的设置页，**真的去点按钮**：
   列表渲染、逐行删除的确认框与宿主调用、失败时的错误文案、勾选全选后的批量删除与调用顺序，
   共 17 项。
@@ -230,11 +232,12 @@ Safe Mode 回退                     0 处
 /dsh-desktop/shell/memory          HTTP 200（已注册工作区）/ 400（未注册根目录，被收敛拒绝）
 test\archive-delete.test.mjs          17 项全过（真点按钮：单删 / 批量 / 失败分支）
 install-to-profile.ps1             实测执行通过，旧依赖与改名残留已从 profile 摘除
-客户端注册契约自检                  通过（1 section / 4 页签 / 111 key 中英齐平 / order 900）
+客户端注册契约自检                  通过（1 section / 7 页签 / 201 key 中英齐平 / order 900）
 ```
 
 **未验证**：客户端渲染结果（侧边栏的「综合平台」是否排到最后、页签切换、记忆编辑器切页不丢稿、
-归档页的删除按钮与确认框在真实数据下的观感）——需要在应用里点一遍。
+归档页的删除按钮与确认框在真实数据下的观感、4 个 FreeModel 页签在装了 `dsh-our-free-model`
+的真实数据下的观感）——需要在应用里点一遍。
 
 ## 依赖
 

@@ -13,5 +13,7 @@
 - 2026-10-14 改完 `dsh-plugins` 下的代码必须重跑 `install-to-profile.ps1` 再重启 DSH Desktop；服务端可用 loopback 路由自检，客户端只能靠用户看界面。
 - 2026-10-15 `ctx.slots.entries(key)` 返回的 entry 自带 `component`，可以跨插件把别人注册的设置页直接渲染进自己的页面（本仓库用它把 dsh-our-free-model 的整页挂进综合平台）；账本变化用 `getVersion` + `subscribe` 观察。
 - 2026-10-15 dsh-our-free-model 的 `/api/our-free-model/*` 有信任围栏，外部请求一律 401，页面只能在渲染进程里用同源凭据访问；它装的版本与 GitHub main 一致（2.1.0）。
-- 2026-10-15 跨插件挂载别人注册���设置页时，必须连 `close` 和 `t`（`ctx.locale.bind(entry.options.locale)`）一起给；缺 `t` 会在渲染期抛错、页签白屏。
+- 2026-10-15 跨插件挂载别人注册的设置页时，必须连 `close` 和 `t`（`ctx.locale.bind(entry.options.locale)`）一起给；缺 `t` 会在渲染期抛错、页签白屏。
 - 2026-10-15 slot 记录的命名空间在 `entry.locale`（与 component/inject 同级），`entry.options` 里只有 key/id/order/label/priority；读错会静默退化成回显 key。
+- 2026-10-15 挂载别人的设置页做不到「只显示其中几页」：页签条是对方组件内部的 state，外部无法隐藏单个页签，用户因此要求删掉「免费模型」那一页。结论：这 4 页改为自建前端，只读它的 `/api/our-free-model/*`。
+- 2026-10-15 综合平台现有 7 个页签：用量统计 / 归档历史 / 记忆系统 + FreeModel 的 插件升级 / 省 Token / 网关设置 / 路由（后 4 个自建，共 201 个中英 key）。

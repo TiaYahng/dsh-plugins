@@ -58,6 +58,10 @@ globalThis.document = {
   createElement: () => ({ id: '', textContent: '' }),
   getElementById: () => null
 }
+// Effects stay inert by default (the older assertions want the first paint);
+// the owner-page assertions opt in so the fetches actually happen.
+const pendingEffects = []
+let effectsRun = false
 const React = {
   // Flatten nested child arrays the way React does, so assertions can walk the
   // rendered tree without knowing which call site used `.map`.
@@ -67,7 +71,7 @@ const React = {
     children: children.flat(Infinity)
   }),
   useState: (init) => [typeof init === 'function' ? init() : init, () => {}],
-  useEffect: () => {},
+  useEffect: (run) => { if (effectsRun) pendingEffects.push(run) },
   useCallback: (fn) => fn,
   useRef: (value) => ({ current: value }),
   useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot()
@@ -135,9 +139,10 @@ const [tabBarElement, panelHost] = tree.children
 // The first child is the TabBar component element; render it to reach its props.
 const tabBar = tabBarElement.type(tabBarElement.props)
 if (tabBar.props.role !== 'tablist') throw new Error('first child is not the tab strip')
-if (tabBar.children.length !== 4) throw new Error(`expected 4 tabs, got ${tabBar.children.length}`)
+if (tabBar.children.length !== 7) throw new Error(`expected 7 tabs, got ${tabBar.children.length}`)
 const tabIds = tabBar.children.map((child) => child.props.id)
-if (tabIds.join() !== 'dshPlatformTab-usage,dshPlatformTab-archive,dshPlatformTab-memory,dshPlatformTab-freemodel') {
+const wanted = ['usage', 'archive', 'memory', 'upgrade', 'saver', 'gateway', 'routing']
+if (tabIds.join() !== wanted.map((id) => `dshPlatformTab-${id}`).join()) {
   throw new Error(`tab ids: ${tabIds}`)
 }
 if (!tabBar.children.every((child) => child.props.role === 'tab' && child.props['aria-controls'].startsWith('dshPlatformPanel-'))) {
@@ -149,49 +154,81 @@ if (mounted.join() !== 'usage') throw new Error(`only the remembered tab should 
 console.log(`apply: 1 section (${entry.id}), tabs ${tabIds.length}, initial panel ${mounted[0]}`)
 
 
-// ── the foreign tab renders the other plugin's own section component ─────
-// Remembering that tab is the only way to mount it: the panel mounts lazily.
-rememberedTab = 'freemodel'
+// ── the four FreeModel pages read the owner's own API ────────────────────
+// Each page remembers lazily: setting `rememberedTab` and re-applying mounts
+// exactly that panel, which is the only way to reach a page's own code here.
+const ownerCalls = []
+let ownerStatus = 200
+globalThis.fetch = async (url, options) => {
+  ownerCalls.push({ url: String(url), options })
+  return { ok: ownerStatus < 400, status: ownerStatus, json: async () => ownerCalls.length }
+}
+
+const PAGES = {
+  upgrade: ['/api/our-free-model/update/status'],
+  saver: ['/api/our-free-model/token-saver', '/api/our-free-model/local-optimize'],
+  gateway: [
+    '/api/our-free-model/clients',
+    '/api/our-free-model/forward/key',
+    '/api/our-free-model/forward/lan/key',
+    '/api/our-free-model/forward/lan/addresses',
+    '/api/our-free-model/chan-gateway'
+  ],
+  routing: ['/api/our-free-model/combos', '/api/our-free-model/summary']
+}
+
+for (const [id, routes] of Object.entries(PAGES)) {
+  rememberedTab = id
+  registered.sections.length = 0
+  plugin.apply(ctx)
+  const mounted2 = registered.sections[registered.sections.length - 1]
+  const rendered2 = expand(mounted2.component(mounted2.entry.inject()))
+  const own = findById(rendered2, `dshPlatformPanel-${id}`)
+  if (own === null) throw new Error(`${id} panel did not mount`)
+  // The page is still loading (effects are inert in this harness), which is the
+  // state that proves `t` reached it: the note is copy from our dictionary.
+  if (findByText(rendered2, 'settings.desktopPlatform/owner.loading') === null) {
+    throw new Error(`${id} did not render with the translator`)
+  }
+  ownerCalls.length = 0
+  flushEffects(() => expand(mounted2.component(mounted2.entry.inject())))
+  const asked = ownerCalls.map((call) => call.url)
+  for (const route of routes) {
+    if (!asked.includes(route)) throw new Error(`${id} never asked ${route} (asked ${asked.join()})`)
+  }
+  // The owner's fence only lets the renderer through with the page's own
+  // credentials; a bare fetch from anywhere else is a 401 and shows as absent.
+  if (ownerCalls.some((call) => call.options?.credentials !== 'same-origin')) {
+    throw new Error(`${id} fetched the owner without same-origin credentials`)
+  }
+  console.log(`${id}: reads ${routes.length} owner route(s), same-origin, degrades to a note while loading`)
+}
+
+// 404 means the owner plugin is not installed: the pages must say so rather
+// than surfacing a raw HTTP error.
+rememberedTab = 'gateway'
 registered.sections.length = 0
 plugin.apply(ctx)
+const absentMount = registered.sections[registered.sections.length - 1]
+ownerStatus = 404
+let settled = null
+const restoreState = React.useState
+React.useState = (init) => [typeof init === 'function' ? init() : init, (value) => { settled = typeof value === 'function' ? value(settledState) : value }]
+const settledState = { status: 'loading', data: null, error: '', absent: false }
+flushEffects(async () => { await expand(absentMount.component(absentMount.entry.inject())) })
+await new Promise((resolve) => setTimeout(resolve, 20))
+React.useState = restoreState
+ownerStatus = 200
+if (settled === null || settled.absent !== true) {
+  throw new Error(`a 404 from the owner must resolve to the absent state, got ${JSON.stringify(settled)}`)
+}
+console.log('owner absent (404): every page shows the install hint instead of an error')
 
-// No owner in the ledger yet: the tab has to say so, not render a blank page.
-let again = registered.sections[registered.sections.length - 1]
-let withoutOwner = expand(again.component(again.entry.inject()))
-let note = findByText(withoutOwner, 'settings.desktopPlatform/freemodel.missing')
-if (note === null) throw new Error('foreign tab did not degrade to its missing-owner note')
-
-// With the owner registered, the tab must render that plugin's own component.
-const foreignComponent = (ownerProps) => ({ type: 'foreign-page', props: ownerProps })
-ledgerEntries.length = 0
-ledgerEntries.push({
-  options: { id: 'our-free-model', order: 35, label: () => 'Our Free Model' },
-  locale: 'dsh-our-free-model',
-  component: foreignComponent
-})
-ledgerVersion += 1
-registered.sections.length = 0
-plugin.apply(ctx)
-again = registered.sections[registered.sections.length - 1]
-const withOwner = expand(again.component(again.entry.inject()))
-const panel = findById(withOwner, 'dshPlatformPanel-freemodel')
-if (panel === null) throw new Error('foreign tab did not mount its panel')
-const rendered = findByType(panel, 'foreign-page')
-if (rendered === null) throw new Error('foreign tab did not render the owner component')
-if (typeof rendered.props.close !== 'function') throw new Error('foreign page needs a close affordance')
-// The owner page reads `t` on its first line: without it the tab renders empty.
-if (typeof rendered.props.t !== 'function') throw new Error('foreign page got no translator')
-if (rendered.props.t('nav') !== 'dsh-our-free-model/nav') {
-  throw new Error(`translator is not bound to the owner namespace: ${rendered.props.t('nav')}`)
+// The mount is history: nothing may bring another plugin's settings section in.
+if (/ForeignPage|ofm_navbrand|tab\.freemodel/.test(source)) {
+  throw new Error('the other plugin\'s page is mounted again')
 }
-// The owner's masthead is dropped inside this tab, and only inside it.
-if (!source.includes('#dshPlatformPanel-freemodel .ofm_navbrand')) {
-  throw new Error('owner masthead is not hidden inside this tab')
-}
-if (findByText(withOwner, 'settings.desktopPlatform/freemodel.missing') !== null) {
-  throw new Error('foreign tab still claims the owner is missing')
-}
-console.log('foreign tab: owner component rendered, absent owner degrades to a note')
+console.log('foreign mount: gone from the source')
 
 /**
  * Expand function-typed elements, so a page that renders another component is
@@ -224,6 +261,18 @@ function findByType (node, type) {
   walkTree(node, (candidate) => { if (hit === null && candidate.type === type) hit = candidate })
   return hit
 }
+/** Run the effects collected during one render pass, then let them settle. */
+async function flushEffects (render) {
+  effectsRun = true
+  pendingEffects.length = 0
+  try {
+    render()
+    await Promise.all(pendingEffects.map((run) => run()))
+  } finally {
+    effectsRun = false
+  }
+}
+
 function walkTree (node, visit) {
   if (node === null || node === undefined || typeof node !== 'object') return
   if (Array.isArray(node)) {
