@@ -1,6 +1,8 @@
 # 长期记忆
 
 - 2026-10-16 第 4 页的服务端也内嵌进本插件（`free-model/`，约 3.9 MB，来自 dsh-our-free-model）：「独立」= 装一个插件就完整，不能还要另装一个。四处必改：路由前缀换成我们的、`distributionOf` 恒为 `managed`（否则它的自更新/公告/热重载会改我们的字节）、`DATA_DIR_NAME` 换成自己的、版本号读上层 manifest。`llm` 必须是软依赖。自检 `test/free-model-standalone.test.mjs` 钉住这几条。
+- 2026-10-17 内嵌服务端的前缀在源码里**出现两处**：注册处 `path: '/api/...'` 与处理函数里 `url.pathname.replace(/^\/api\/.../, '')`。只改注册处会让每条路由落到 404，表现是「页签没数据」而不是「漏改一处」。`tools/vendor-our-free-model.mjs` 现在两处都改，`test/free-model-standalone.test.mjs` 断言 strip 与 mount 一致。
+- 2026-10-17 端口 19387 上跑的可能是 `E:\ai\DeepSeek Harness\DeepSeek Harness.exe`（用 `~/.dsh/profiles/desktop`），也可能是 DSH Desktop（用 `%APPDATA%\dsh-desktop\harness\profiles\web`）；`install-to-profile.ps1` 只装后者。判据：进程命令行第三个参数是 profile 目录。desktop 那套 `dsh --profile desktop ...` 会报 `error: profile "desktop" is managed exclusively by the Electron application`，CLI 不可用，只能改文件后重启 GUI。
 - 2026-10-17 插件目录从 `plugins/dsh-comprehensive-platform/` 提到仓库根下 `dsh-comprehensive-platform/`，`plugins/` 已删除（用 `git mv` 保留历史）。**代价**：按 CI 白名单这个位置不合格（本仓库没有根 `package.json`），提列表 PR 前要么挪回 `plugins/`，要么补根包 `package.json`。
 - 2026-10-16 插件列表（市场目录）由 `awesome-dsh-plugin/awesome-dsh-plugin` 的 `data/plugins/*.yml` 生成，收录=往那边提一个 PR；其 CI 只认根包或 `packages/`·`plugins/`·`apps/` 子包的 `dsh.bundle`，并卡仓库年龄 ≥1 天。投稿文件见 `docs/market-entry.yml`。
 - 2026-10-16 包名改成 `dsh-comprehensive-platform`：**包身份**（client bundle id、cordis.patch 行、服务端 `name`、profile 的 dependencies/bundles）全部跟着改；**`SETTINGS_NAMESPACE` 与设置页 section id 不改**——它们是别人机器上已有数据的键，改了等于静默丢设置/丢记忆。自检给这两个键各留常量并断言它们不随包名变。
