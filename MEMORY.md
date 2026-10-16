@@ -1,5 +1,6 @@
 # 长期记忆
 
+- 2026-10-16 宿主**拒绝同一 locale 命名空间注册两次**：`locale namespace "X" already has locale "zh"` 会在渲染进程抛错 → 整个 client bundle 加载失败 → profile 判定失败 → **应用打不开**（界面上只显示市场的 404 噪音）。两个地方都要容忍：内嵌的 owner 插件自己会注册 `settings.ourFreeModel`；且 `apply` 会跑多次（热重载 / profile 变更），自己的命名空间也会撞上。
 - 2026-10-16 FreeModel 的页面**不再自己写**：原版 `client.js` 内嵌进本插件，`tools/vendor-our-free-model.mjs` 重新生成并拼进 client.js，只改七处（bundle id / 页签记忆 / 导航行 / 默认分支 / 两处 slot 注册 / 公告 EventSource / 导出组件）。走过的弯路：挂载（它的页签条删不掉某一页）→ 照接口重写（差距大，用户不接受）。
 - 2026-10-16 内嵌它的两件事必须自己做：翻译器要 `ctx.locale.bind('settings.ourFreeModel')` 且在它 `apply` 注册词典**之后**绑（否则它用自己的 key 去查本插件的词典）；`window.__ModuleLoader__` 要在求值那一下换成捕获用的假对象，否则会注册出第二个同名 bundle。
 - 2026-10-16 原版自己的 CSS 用了两个宿主没定义的 token（`--dsw-alias-state-warning-primary`、`--dsw-alias-label-on-accent`），在 color-mix() 里整条声明作废，那两处颜色今天就是不显示的；自检只审我们自己的样式表，遇到它报告不报错。

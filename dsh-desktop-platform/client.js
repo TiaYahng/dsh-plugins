@@ -7437,7 +7437,18 @@ window.__ModuleLoader__.load({
       // simply offers no delete, and everything else keeps working.
       const host = { session: null }
       ctx.inject(['remote', 'remote.session'], (child) => { host.session = child.remote.session })
-      ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-desktop-platform: copy dictionaries')
+      ctx.effect(() => {
+        // The host refuses a second registration for one namespace, and apply
+        // runs more than once (hot reload, a profile change). A dictionary is
+        // content, not a resource: re-registering the same one is not a
+        // failure, and treating it as one takes the whole bundle down and the
+        // app with it.
+        try {
+          ctx.locale.register(NS, { zh, en })
+        } catch (error) {
+          if (/already has locale/.test(String(error?.message ?? error)) === false) throw error
+        }
+      }, 'dsh-desktop-platform: copy dictionaries')
       const t = ctx.locale.bind(NS)
       // `settingsScope` was removed in 0.1.7. Its replacement is `configForms`:
       // one shared form controller per Loader entry id, backed by

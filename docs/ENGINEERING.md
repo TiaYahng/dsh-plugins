@@ -37,6 +37,21 @@ FreeModel 的 8 个页面不占外层页签：外层只有 1 个 `freemodel` 页
 并把它拼进 `client.js` 的 VENDOR 标记之间。**每处改动都按行内容定位，不按缩进定位**：
 源码是别人的，重排一次缩进不该让这个脚本变成空格游戏。原版更新后重跑即可。
 
+### 词典注册必须容忍重复
+
+宿主**拒绝同一命名空间注册两次**：`locale namespace "X" already has locale "zh"` 会在渲染进程
+抛错，client bundle 整个加载失败，宿主判定 profile 失败——表现是**应用打不开**，界面上只看得见
+市场那两行 registry 404。实测踩了两次，两次原因不同：
+
+1. 内嵌的副本调 `apply` 时注册 `settings.ourFreeModel`，而**owner 插件自己也注册它**（它就装在旁边）。
+2. `apply` 会跑不止一次（热重载、profile 变更），**自己的**命名空间也会撞上。
+
+所以两处都用 `try` 包住，只放行 `already has locale` 这一种失败，其余照旧抛出。词典是内容不是
+资源，同一份内容再注册一次不是失败。当原插件不在时，内嵌那份就正常注册——两种情况都能工作。
+
+自检的 locale stub 也会拒绝重复命名空间，并且在 `apply` 之前**先放一份 owner 的词典**，让测试站在
+真实机器所处的位置上；只在自己那一份干净环境里跑，就会漏掉这个 bug（漏过一次）。
+
 ### 加载壳
 
 它的 bundle 是手写的 ModuleLoader bundle，会调 `window.__ModuleLoader__.load`——而宿主自己的
