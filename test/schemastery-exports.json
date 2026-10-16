@@ -1,0 +1,33 @@
+{
+  "package": "@deepseek-ai/schemastery",
+  "version": "3.18.4",
+  "note": "A peer dependency, so a checkout cannot enumerate it for itself. Refresh from the profile: node -e \"const {createRequire}=require('node:module');const d=process.env.APPDATA+'/dsh-desktop/harness/profiles/web/node_modules/@deepseek-ai/schemastery';const r=createRequire(d+'/lib/index.cjs')(d+'/lib/index.cjs');console.log(JSON.stringify(Object.keys(r).sort()))\"",
+  "exports": [
+    "ValidationError",
+    "any",
+    "array",
+    "arrayBuffer",
+    "bitset",
+    "boolean",
+    "const",
+    "date",
+    "dict",
+    "extend",
+    "from",
+    "function",
+    "intersect",
+    "is",
+    "lazy",
+    "natural",
+    "never",
+    "number",
+    "object",
+    "percent",
+    "regExp",
+    "resolve",
+    "string",
+    "transform",
+    "tuple",
+    "union"
+  ]
+}

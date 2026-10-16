@@ -159,6 +159,7 @@ node tools\vendor-our-free-model.mjs
 node .\test\platform-client.test.mjs .\plugins\dsh-comprehensive-platform\client.js
 node .\test\archive-delete.test.mjs
 node .\test\free-model-standalone.test.mjs
+node .\test\schema-calls.test.mjs
 node .\test\localcoding-client.test.mjs .\dsh-localcoding-mcp\client.js
 node .\test\localcoding-native.test.mjs
 node .\test\localcoding-process.test.mjs
