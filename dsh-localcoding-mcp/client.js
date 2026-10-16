@@ -42,11 +42,20 @@ window.__ModuleLoader__.load({
       'codexStaleHint': 'Codex 里的那条记录指向的端口不是本机现在应答的端口，Codex 会调到一个没人监听的端口。点「注册到 Codex」覆盖它。',
       'codexStaleDetail': '（原 {was} → 现在 {now}）',
       'codexLoggedOut': 'Codex CLI 未登录，请先在终端执行 codex login，否则反向委派会失败。',
-      'codexEndpoint': '模型入口',
+      'codexEndpoint': '当前模型入口',
       'codexEndpointOk': '模型入口可达',
       'codexEndpointDown': '模型入口不可达（反向委派会失败）',
-      'codexEndpointHint': '反向委派失败的原因：中转站不可达。',
-      'codexRelayNote': '本机 codex 用的是第三方中转（config.toml 里的 bearer token），不是 OpenAI 账号登录，所以 `codex login status` 显示未登录属于正常，不代表不可用。',
+      'codexEndpointHint': '反向委派失败的原因：模型入口不可达。',
+      'codexRelayNote': '上面这个入口来自系统里已有的 codex 配置（config.toml），与本插件无关。点「改用本应用模型」把它换成下面这个由本应用提供的入口。',
+      'useAppModel': '改用本应用模型',
+      'undoAppModel': '恢复原 Codex 配置',
+      'appModel': '本应用模型端点',
+      'appModelHint': 'Codex 直接使用本应用的模型能力：不需要第三方中转、不需要单独的 API Key、不用 codex login。点一下即可改写 ~/.codex/config.toml 并自动备份。',
+      'appModelDisabled': '模型端点未挂载（需要宿主 webServer）。',
+      'appModelSnippet': '或手动写入 config.toml',
+      'endpoints': '端点',
+      'nativeTools': '原生工具',
+      'nativeNote': '这些工具直接跑在插件进程里，不启动任何外部程序、不占端口。',
       'codexServers': 'Codex 已配置的 MCP 服务',
       'state': '状态',
       'workspace': '工作区',
@@ -126,11 +135,20 @@ window.__ModuleLoader__.load({
       'codexStaleHint': 'The row in Codex points at a port this machine is no longer answering on, so Codex calls a dead endpoint. Press "Register with Codex" to overwrite it.',
       'codexStaleDetail': '(was {was} → now {now})',
       'codexLoggedOut': 'The Codex CLI is not logged in. Run `codex login` first, otherwise reverse delegation fails.',
-      'codexEndpoint': 'model endpoint',
+      'codexEndpoint': 'current model endpoint',
       'codexEndpointOk': 'model endpoint reachable',
       'codexEndpointDown': 'model endpoint unreachable (delegation will fail)',
-      'codexEndpointHint': 'Why reverse delegation fails: the relay is not answering.',
-      'codexRelayNote': 'Codex on this machine authenticates against a third-party relay (a bearer token in config.toml), not an OpenAI account login, so `codex login status` reporting "not logged in" is expected and does not mean it is unusable.',
+      'codexEndpointHint': 'Why reverse delegation fails: the model endpoint is not answering.',
+      'codexRelayNote': 'The endpoint above comes from the codex configuration already on this machine (config.toml) and has nothing to do with this plugin. Press "Use this app\'s model" to replace it with the endpoint below, served by this app.',
+      'useAppModel': "Use this app's model",
+      'undoAppModel': 'Restore the original Codex config',
+      'appModel': "this app's model endpoint",
+      'appModelHint': "Codex then runs on this app's own model access: no third-party relay, no separate API key, no `codex login`. One press rewrites ~/.codex/config.toml and backs it up first.",
+      'appModelDisabled': 'The model endpoint is not mounted (it needs the host webServer).',
+      'appModelSnippet': 'or write it into config.toml yourself',
+      'endpoints': 'endpoints',
+      'nativeTools': 'native tools',
+      'nativeNote': 'These tools run inside the plugin process: no external program is started and no port is taken.',
       'codexServers': 'MCP servers configured in Codex',
       'state': 'State',
       'workspace': 'Workspace',
@@ -346,13 +364,14 @@ window.__ModuleLoader__.load({
       const client = status?.client
       const codex = status?.codex
       const tunnel = status?.tunnel
-      const live = server?.state === 'running' || server?.state === 'external'
+      const endpoints = status?.client
+      const live = server?.state === 'native' || server?.state === 'external'
 
-      const stateLabel = server?.state === 'running'
-        ? t('running')
+      const stateLabel = server?.state === 'native'
+        ? t('nativeTools')
         : server?.state === 'external'
           ? t('external')
-          : server?.state === 'starting' ? t('starting') : t('stopped')
+          : t('stopped')
 
       /**
        * Tunnel states come from the fleet verbatim (READY / DIED / TIMEOUT /
@@ -378,41 +397,34 @@ window.__ModuleLoader__.load({
           ? React.createElement('p', { className: 'dshLcmNote' }, note)
           : null,
 
-        // ---- server ----
+        // ---- tool surface ----
+        //
+        // There is no process to start or stop any more: the tools live in the
+        // plugin, so the only useful actions are refreshing the view and reading
+        // the endpoint a client should point at.
         React.createElement(Card, {
           title: t('server'),
           actions: [
-            React.createElement(Btn, { key: 'refresh', disabled: busy !== '', onClick: () => void load() }, t('refresh')),
-            React.createElement(Btn, { key: 'start', disabled: busy !== '' || live, onClick: () => void run('start', '/start', t('start')) }, t('start')),
-            React.createElement(Btn, { key: 'restart', disabled: busy !== '', onClick: () => void run('restart', '/restart', t('restart')) }, t('restart')),
-            React.createElement(Btn, { key: 'stop', danger: true, disabled: busy !== '' || !live, onClick: () => void run('stop', '/stop', t('stop')) }, t('stop'))
+            React.createElement(Btn, { key: 'refresh', disabled: busy !== '', onClick: () => void load() }, t('refresh'))
           ]
         },
           React.createElement('div', { className: 'dshLcmBar' },
             React.createElement('span', {
               className: live ? 'dshLcmTag dshLcmOk' : 'dshLcmTag dshLcmBad'
             }, `${t('state')}: ${stateLabel}`),
-            client?.connected
-              ? React.createElement('span', { className: 'dshLcmTag dshLcmOk' }, t('ok'))
-              : React.createElement('span', { className: 'dshLcmTag dshLcmBad' }, t('failed')),
-            status?.settings?.autoStart === false
-              ? React.createElement('span', { className: 'dshLcmTag' }, t('disabled'))
-              : null),
+            React.createElement('span', { className: 'dshLcmTag' }, t('nativeNote'))),
           React.createElement('div', { className: 'dshLcmGrid' },
             React.createElement(Stat, { key: 'ws', label: t('workspace'), value: status?.settings?.workspaceRoot ?? '—' }),
-            React.createElement(Stat, { key: 'exe', label: t('exe'), value: status?.settings?.exePath ?? '—' }),
-            React.createElement(Stat, { key: 'url', label: t('mcpUrl'), value: codex?.mcpUrl ?? server?.mcpUrl ?? '—' }),
-            React.createElement(Stat, { key: 'pid', label: t('pid'), value: server?.pid ? String(server.pid) : '—' }),
-            React.createElement(Stat, { key: 'ver', label: t('version'), value: client?.serverInfo?.version ?? server?.version ?? '—' }),
-            React.createElement(Stat, { key: 'up', label: t('uptime'), value: seconds(server?.uptimeMs ?? 0) }),
-            React.createElement(Stat, { key: 'sid', label: t('session'), value: client?.sessionId ?? '—' }),
-            React.createElement(Stat, { key: 'caps', label: t('capabilities'), value: client?.capabilities ? Object.keys(client.capabilities).join(', ') : '—' }))),
+            React.createElement(Stat, { key: 'mode', label: t('state'), value: status?.settings?.sourceMode ?? '—' }),
+            React.createElement(Stat, { key: 'mcp', label: t('mcpUrl'), value: client?.mcpUrl ?? codex?.mcpUrl ?? '—' }),
+            React.createElement(Stat, { key: 'model', label: t('appModel'), value: client?.modelBaseUrl ?? '—' }),
+            React.createElement(Stat, { key: 'count', label: t('toolCount'), value: String(status?.tools?.toolCount ?? 0) }),
+            React.createElement(Stat, { key: 'sessions', label: t('session'), value: String(client?.sessions ?? 0) }))),
 
         // ---- tools ----
         React.createElement(Card, {
           title: `${t('tools')} (${status?.tools?.toolCount ?? 0})`,
           actions: [
-            React.createElement(Btn, { key: 'sync', disabled: busy !== '' || !live, onClick: () => void run('sync', '/refresh-tools', t('refreshTools')) }, t('refreshTools')),
             React.createElement(Btn, { key: 'avail', disabled: busy !== '' || !live, onClick: () => {
               setBusy('avail')
               void request('/available')
@@ -450,8 +462,8 @@ window.__ModuleLoader__.load({
         },
           React.createElement('div', { className: 'dshLcmBar' },
             // Three states, not two. A row left over from an earlier session used
-            // to read as "registered" while Codex called a dead port, so the port
-            // match is reported separately instead of being folded into a boolean.
+            // to read as "registered" while Codex called a dead endpoint, so the
+            // match is reported separately instead of folded into a boolean.
             React.createElement('span', {
               className: codex?.matchesOurEndpoint ? 'dshLcmTag dshLcmOk'
                 : codex?.registered ? 'dshLcmTag dshLcmBad'
@@ -462,9 +474,9 @@ window.__ModuleLoader__.load({
             codex?.loggedIn === false
               ? React.createElement('span', { className: 'dshLcmTag dshLcmBad' }, t('codexLoggedOut'))
               : null,
-            // The real readiness signal. `codex login status` always says "Not
-            // logged in" when auth comes from a relay bearer token, so it can
-            // never be the thing the user trusts.
+            // Whether the endpoint Codex is *currently* configured with answers.
+            // `codex login status` can never be this signal: a relay config has no
+            // auth.json and always reports "not logged in".
             codex?.endpoint?.checked
               ? React.createElement('span', {
                 className: codex.endpoint.reachable ? 'dshLcmTag dshLcmOk' : 'dshLcmTag dshLcmBad'
@@ -482,7 +494,41 @@ window.__ModuleLoader__.load({
                 label: t('codexEndpoint'),
                 value: `${codex.provider.name} · ${codex.provider.baseUrl}${codex.provider.hasToken ? ' · token' : ''}`
               })
-              : null),
+              : null,
+            // The endpoint this plugin offers, next to whatever Codex uses today.
+            // Seeing both is the point: the user asked to replace the first with
+            // the second, and the difference has to be visible to press the button.
+            React.createElement(Stat, {
+              key: 'appmodel',
+              label: t('appModel'),
+              value: endpoints?.modelBaseUrl ?? '—'
+            })),
+          codex?.provider?.relay
+            ? React.createElement('p', { className: 'dshLcmNote dshLcmNoteWarn' }, t('codexRelayNote'))
+            : null,
+          // Always rendered, even before the first poll lands: this is the control
+          // that performs the user's actual request (run Codex on this app's model),
+          // and a feature that only appears once status arrives is one nobody finds.
+          React.createElement('p', {
+            className: endpoints?.modelBaseUrl === undefined ? 'dshLcmNote dshLcmNoteWarn' : 'dshLcmNote'
+          }, endpoints?.modelBaseUrl === undefined ? t('appModelDisabled') : t('appModelHint')),
+          React.createElement('div', { className: 'dshLcmBar' },
+            React.createElement(Btn, {
+              key: 'usemodel',
+              disabled: busy !== '' || endpoints?.modelBaseUrl === undefined,
+              onClick: () => void run('usemodel', '/codex/use-app-model', t('useAppModel'))
+            }, t('useAppModel')),
+            React.createElement(Btn, {
+              key: 'undomodel',
+              danger: true,
+              disabled: busy !== '',
+              onClick: () => void run('undomodel', '/codex/restore', t('undoAppModel'))
+            }, t('undoAppModel'))),
+          endpoints?.modelSnippet
+            ? React.createElement('details', null,
+              React.createElement('summary', null, t('appModelSnippet')),
+              React.createElement('pre', { className: 'dshLcmLog' }, endpoints.modelSnippet))
+            : null,
           codex?.endpoint?.checked && codex.endpoint.reachable === false
             ? React.createElement('p', { className: 'dshLcmNote dshLcmNoteWarn' },
               t('codexEndpointHint'), ' ', codex.endpoint.error ?? '')

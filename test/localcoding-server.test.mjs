@@ -1,14 +1,18 @@
 /**
- * End-to-end exercise of the dsh-localcoding-mcp server half against a live
- * LocalCodingMCP instance: starts nothing (it adopts whatever is already on the
- * configured port), lists tools, calls one, and prints the shape the host would
- * render. Run with:
+ * End-to-end exercise of the attach-only MCP client against a live
+ * LocalCodingMCP instance: starts nothing (it adopts whatever is already
+ * listening), lists tools, calls one, and prints the shape the host would render.
+ * Run with:
  *
  *   node test/localcoding-server.test.mjs
  *
  * Environment: LCM_URL (default http://127.0.0.1:3011/mcp), LCM_TOKEN (optional
- * bearer token). It is a live probe, not a hermetic unit test: if nothing is
- * listening, it fails loudly rather than skipping.
+ * bearer token).
+ *
+ * This suites covers the **legacy attach path only**. The plugin no longer starts
+ * `LocalCodingMCP.exe` — its tools are native now — so nothing here is needed for
+ * the default configuration, and a missing server is a skip rather than a failure:
+ * failing would report the retired arrangement as a broken build.
  */
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
@@ -19,6 +23,26 @@ const { McpToolBridge, PREFIX } = require('../dsh-localcoding-mcp/server/bridge.
 
 const url = process.env.LCM_URL ?? 'http://127.0.0.1:3011/mcp'
 const token = process.env.LCM_TOKEN ?? ''
+
+/* ── skip cleanly when the optional external server is not running ───────── */
+try {
+  await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'probe', version: '1' } }
+    }),
+    signal: AbortSignal.timeout(4_000)
+  })
+} catch (error) {
+  console.log(`  skip  no LocalCodingMCP server is answering at ${url} (${error.cause?.code ?? error.name})`)
+  console.log('        the native tools do not need it; set LCM_URL to test the legacy attach path')
+  console.log('localcoding server: skipped')
+  process.exit(0)
+}
 
 /* ── a tools registry shaped like the host's ─────────────────────────────── */
 const registry = new Map()

@@ -107,32 +107,40 @@ export function registerRoutes (webCtx, controller) {
     return text
   }
 
-  /** Full status snapshot: process, tools, Codex, and effective settings. */
+  /** Full status snapshot: tool surface, Codex, endpoints, and effective settings. */
   get(`${base}/status`, async () => controller.status())
 
-  /** Just the process state; polled by the page while a start is in flight. */
+  /** Cheap liveness poll used while the page refreshes. */
   get(`${base}/health`, async () => controller.health())
 
-  /** Tools currently bridged into the host registry. */
+  /** Tools currently registered in the host registry. */
   get(`${base}/tools`, async () => controller.tools())
 
-  /** Recent server stdout/stderr lines for the diagnostics panel. */
+  /** Where the MCP and model endpoints are, plus paste-ready client snippets. */
+  get(`${base}/endpoints`, async () => controller.endpoints())
+
+  /** Recent diagnostics. No child process runs now, so this is normally empty. */
   get(`${base}/logs`, async (url) => ({ logs: controller.logs(Number(url.searchParams.get('limit') ?? 40)) }))
 
-  /** MCP handshake facts plus the first lines of the server's instructions. */
+  /** What this tool surface is: counts, endpoint URLs, and how the tools run. */
   get(`${base}/probe`, async () => controller.probe())
 
-  /** Tools the server exposes right now, even if they are not registered. */
+  /** Tools the surface exposes, in registration order. */
   get(`${base}/available`, async () => controller.availableTools())
-
-  action(`${base}/start`, async () => controller.start())
-  action(`${base}/stop`, async () => controller.stop())
-  action(`${base}/restart`, async () => controller.restart())
-  action(`${base}/refresh-tools`, async () => controller.refreshTools())
 
   /** Register our /mcp endpoint with `codex mcp add --url`. */
   action(`${base}/codex/register`, async () => controller.registerWithCodex())
   action(`${base}/codex/unregister`, async () => controller.unregisterFromCodex())
+
+  /**
+   * Point Codex at this app's model endpoint instead of its own relay.
+   *
+   * This rewrites `~/.codex/config.toml`, so it is a button the user presses and
+   * never something that happens on load. A timestamped backup is written first and
+   * `codex/restore` puts it back.
+   */
+  action(`${base}/codex/use-app-model`, async () => controller.useAppModel())
+  action(`${base}/codex/restore`, async () => controller.undoUseAppModel())
 
   // ---- GPT web → local: one tunnel-client process per ChatGPT account ----
 

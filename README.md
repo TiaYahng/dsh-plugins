@@ -36,25 +36,27 @@ EAC 模型 / 省 Token / 路由 / 数据看板 / 运行日志 / 网关设置）�
 > 它的 LICENSE 与 NOTICE 仍然在仓库里，第三方来源有据可查。
 ## 本地编码 MCP（`dsh-localcoding-mcp`）
 
-把 `LocalCodingMCP_v0_3`（一个 .NET 8 的 MCP 服务器，40 个工具）接进宿主，三个方向：
+**不启动任何外部程序。** 工具直接实现在本插件里（Node + 宿主 `ctx.tools.register`），
+没有子进程、没有本地端口、没有需要单独编译的二进制。四个方向：
 
-- **进（本地）**：宿主工具表多出 41 个 `lcm_*` 工具（40 个 MCP 工具 + `lcm_codex_task`），
-  本模型可以直接读写工程、跑构建、查 git。
-- **出（Codex）**：`lcm_codex_task` 把编码任务委派给 `codex.exe`；
-  设置页一键把本服务器注册进 Codex（`codex mcp add dsh-localcoding --url http://127.0.0.1:3011/mcp`），
-  于是 Codex 也能读写同一个工程，两个 agent 共用一套工具面。
+- **本地工具**：宿主工具表多出 30 多个 `lcm_*` 工具 —— 读写改文件、目录操作、搜索与符号定位、
+  git 状态/差异/提交/还原、构建与测试、长驻进程会话、以及一个**可撤销的改动日志**
+  （`lcm_undo_last_change`）。所有路径都被限制在工作区内，越界直接拒绝。
+- **对外提供 MCP**：插件自己在 `/mcp` 上提供 MCP（streamable HTTP），
+  和本地工具是**同一批实现**。Codex 用 `codex mcp add dsh-localcoding --url http://127.0.0.1:19387/mcp` 接进来。
+- **本应用模型给 Codex 用**：插件在 `/v1` 上提供 OpenAI 兼容端点，背后是宿主的 `llm` 服务。
+  设置页一个按钮把 `~/.codex/config.toml` 改成指向它（**改前自动备份**，可一键还原），
+  于是 Codex 跑的就是本应用正在用的模型 —— 不需要第三方中转、不需要单独的 API Key、不用 `codex login`。
 - **网页版 ChatGPT → 本地**：`chatgpt.com` 的连接器够不到 `127.0.0.1`，
   所以设置页按账号起 `tunnel-client.exe`（OpenAI 官方**出站**守护进程），
   它主动连 OpenAI 控制面；之后在 `chatgpt.com/#settings/Connectors` 里选中这条隧道，
-  网页版 ChatGPT 就能调用本机的 40 个工具。**这是唯一不需要开放入站端口的接法。**
+  网页版 ChatGPT 就能调用上面那批工具。**这是唯一不需要开放入站端口的接法。**
   设置页可按账号启停、看 `/readyz` 与 `doctor` 输出，并提示
   `/readyz` 只证明进程活着 —— 真正的验收是去连接器里发一次真实工具调用。
-  可选的浏览器面（Playwright MCP）也走同一个连接器，`mcp.local.json` 已按白名单放行
-  24 个 `browser_*` 工具，刻意不含 `browser_run_code_unsafe`。
+  可选的浏览器面（Playwright MCP）也走同一个连接器。
 
-插件自己托管它起的每一个进程：`LocalCodingMCP.exe`、各账号的 `tunnel-client.exe`、
-可选的浏览器 MCP，都随宿主启停。设置页有服务器状态、工具清单、Codex 与模型入口、
-握手自检、隧道舰队和实时日志。
+设置页显示：工具表、两个端点的地址与可直接粘贴的客户端配置、Codex 状态、隧道舰队。
+`sourceMode: 'external-mcp'` 是给「别人已经在跑 LocalCodingMCP.exe」的场景留的**只连接、不启动**模式。
 
 > 两个账号相关的前提本机还不满足：`accounts.json` 里三个账号的 `organizationId` 都是空的
 > （会得到 `403 tunnel_active_organization_required`），隧道 ID 也可能已过期需要在
@@ -158,10 +160,11 @@ node .\test\platform-client.test.mjs .\plugins\dsh-comprehensive-platform\client
 node .\test\archive-delete.test.mjs
 node .\test\free-model-standalone.test.mjs
 node .\test\localcoding-client.test.mjs .\dsh-localcoding-mcp\client.js
+node .\test\localcoding-native.test.mjs
 node .\test\localcoding-process.test.mjs
 node .\test\localcoding-tunnel.test.mjs
 node .\test\localcoding-plugin.test.mjs
-$env:LCM_URL = 'http://127.0.0.1:3011/mcp'; node .\test\localcoding-server.test.mjs
+node .\test\localcoding-server.test.mjs
 ```
 
 前两个前端自检必须带 `client.js` 的路径参数（只认位置参数，不吃环境变量）。

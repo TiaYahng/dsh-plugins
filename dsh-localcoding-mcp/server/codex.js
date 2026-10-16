@@ -9,7 +9,7 @@
  */
 
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
@@ -414,7 +414,110 @@ export async function probeEndpoint (provider, options = {}) {
   }
 }
 
-/** Run `fn` against an AbortSignal that fires after `timeoutMs`. */
+/**
+ * Point the Codex CLI at this app's model endpoint.
+ *
+ * Codex normally talks to whatever `base_url` its config names — on this machine a
+ * third-party relay with its own bearer token. That is the arrangement this
+ * replaces: the plugin serves this app's own model access at `/v1`, so Codex can
+ * use the same model as the app with no relay and no separate credential.
+ *
+ * The edit is confined and reversible: the previous `model_provider` and the whole
+ * `[model_providers.dsh]` block are what get rewritten, and a timestamped backup of
+ * the original file is written first. A tool that silently rewrote a user's CLI
+ * configuration with no way back would be unacceptable, so the backup is not
+ * optional.
+ *
+ * @param {string} providerId provider route the `[model_providers.*]` block declares
+ * @param {string} baseUrl the `/v1` base url to write
+ * @param {{model?: string, codexPath?: string}} [options]
+ * @returns {Promise<{configPath: string, backupPath: string, baseUrl: string, provider: string, model?: string, text: string}>}
+ */
+export async function configureCodexProvider (providerId, baseUrl, options = {}) {
+  const configDir = path.join(homedir(), '.codex')
+  const configPath = path.join(configDir, 'config.toml')
+  let original
+  try {
+    original = readFileSync(configPath, 'utf8')
+  } catch (error) {
+    throw new Error(`cannot read ${configPath}: ${error.message}. Run \`codex\` once so it creates its configuration.`)
+  }
+
+  const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)
+  const backupPath = `${configPath}.bak-dsh-model-${stamp}`
+  writeFileSync(backupPath, original, 'utf8')
+
+  const block = [
+    `[model_providers.${providerId}]`,
+    'name = "DSH Harness"',
+    `base_url = "${baseUrl}"`,
+    'wire_api = "chat"',
+    'requires_openai_auth = false'
+  ].join('\n')
+
+  // Strip the keys and the table we are about to replace, then re-add them. Doing
+  // it textually keeps comments and key order for everything we do not own.
+  const withoutProvider = original
+    .replace(/^\s*model_provider\s*=.*$/m, '')
+    .replace(new RegExp(`^\\[model_providers\\.${providerId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\s*\\n(?:[^\\[\\n].*\\n?)*`, 'm'), '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd()
+
+  const parts = [`model_provider = "${providerId}"`]
+  if (typeof options.model === 'string' && options.model !== '') parts.push(`model = "${options.model}"`)
+  const next = `${parts.join('\n')}\n\n${withoutProvider}\n\n${block}\n`
+  writeFileSync(configPath, next, 'utf8')
+
+  return {
+    configPath,
+    backupPath,
+    baseUrl,
+    provider: providerId,
+    ...(options.model ? { model: options.model } : {}),
+    text: [
+      `Codex will now use this app's model endpoint.`,
+      `  provider   ${providerId}`,
+      `  base_url   ${baseUrl}`,
+      `  wire_api   chat`,
+      `  config     ${configPath}`,
+      `  backup     ${backupPath}`,
+      'Start a new Codex session for it to take effect. Restore the backup to undo.'
+    ].join('\n')
+  }
+}
+
+/**
+ * The newest backup this plugin created for `~/.codex/config.toml`, if any.
+ *
+ * The naming rule is the contract: only files this module wrote match, so the
+ * restore path can never pick up some unrelated `.bak` and clobber the user's
+ * configuration with it.
+ */
+export function latestCodexBackup () {
+  const configDir = path.join(homedir(), '.codex')
+  let entries
+  try {
+    entries = readdirSync(configDir)
+  } catch {
+    return undefined
+  }
+  const candidates = entries
+    .filter((entry) => entry.startsWith('config.toml.bak-dsh-model-'))
+    .sort()
+  if (candidates.length === 0) return undefined
+  return path.join(configDir, candidates.at(-1))
+}
+
+/** Undo {@link configureCodexProvider} from a backup file it created. */
+export async function restoreCodexConfig (backupPath) {  if (typeof backupPath !== 'string' || backupPath === '') throw new Error('backupPath is required')
+  if (!/\.bak-dsh-model-\d+$/.test(backupPath)) {
+    throw new Error('refusing to restore from a file this plugin did not create')
+  }
+  const configPath = path.join(homedir(), '.codex', 'config.toml')
+  writeFileSync(configPath, readFileSync(backupPath, 'utf8'), 'utf8')
+  return { configPath, restoredFrom: backupPath }
+}
+
 function withDeadline (_signal, timeoutMs, fn) {
   const deadline = AbortSignal.timeout(timeoutMs)
   return fn(deadline)

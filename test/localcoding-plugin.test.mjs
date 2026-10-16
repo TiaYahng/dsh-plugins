@@ -69,11 +69,21 @@ const ctx = {
     info () {},
     warn (error) { warnings.push(error instanceof Error ? error.message : String(error)) }
   },
+  /** The host's service lookup. The plugin asks for `llm` and `webServer`. */
+  get (key) {
+    if (key === 'webServer') return { baseUrl: 'http://127.0.0.1:19387', webServer, logger: ctx.logger }
+    return undefined
+  },
   inject (names, callback) {
     assert.deepEqual(names, ['webServer'], 'only the web server plane is optional')
     // The injected plane is its own context, so it owns its own `effect` scope;
     // that is where `server/http.js` parks the route teardown.
-    const webCtx = { webServer, logger: ctx.logger, effect: (fn, label) => effects.push({ label, dispose: fn() }) }
+    const webCtx = {
+      webServer,
+      logger: ctx.logger,
+      baseUrl: 'http://127.0.0.1:19387',
+      effect: (fn, label) => effects.push({ label, dispose: fn() })
+    }
     callback(webCtx)
   },
   effect (fn, label) {
@@ -88,13 +98,12 @@ const config = plugin.Config({
   browserEnabled: true,
   // Nothing here may start a child process: the fleet and the browser manager are
   // built and described, but auto-start stays off in this test.
-  autoStart: false,
   tunnelAutoStartAll: false,
   browserAutoStart: false
 })
 
 plugin.apply(ctx, config)
-// The bridge effect is async; give it a moment to settle before asserting.
+// The surface effect mounts synchronously; give it a moment for the async parts.
 await new Promise((resolve) => setTimeout(resolve, 1_500))
 
 // ------------------------------------------------------------------ tools
@@ -106,14 +115,26 @@ await check('tools are registered with the lcm_ prefix', () => {
   assert.ok(!names.includes('run_code'), 'the reserved host name must never be registered')
 })
 
+await check('the surface is native: a full tool table and no spawned server', () => {
+  // The whole point of the rebuild: these tools run in the plugin process. A
+  // regression that reintroduced the bridge would show up as a much smaller table.
+  const nativeNames = registered.map((tool) => tool.name).filter((name) => name !== 'lcm_codex_task')
+  assert.ok(nativeNames.length >= 25, `expected a full native surface, got ${nativeNames.length}`)
+  for (const expected of ['lcm_read_file', 'lcm_write_file', 'lcm_search_code', 'lcm_git_status', 'lcm_undo_last_change', 'lcm_run_native_command', 'lcm_spawn_process']) {
+    assert.ok(nativeNames.includes(expected), `missing native tool ${expected}`)
+  }
+  // None of them may describe the retired external server.
+  const leaked = registered.filter((tool) => /LocalCodingMCP\.exe|http:\/\/127\.0\.0\.1:3011/.test(tool.description ?? ''))
+  assert.deepEqual(leaked.map((tool) => tool.name), [], 'a tool still points at the old external server')
+})
+
 // ------------------------------------------------------------------ routes
 const BASE = '/dsh-localcoding-mcp'
 
 await check('every settings route is mounted', () => {
   const expected = [
-    'status', 'health', 'tools', 'logs', 'probe', 'available',
-    'start', 'stop', 'restart', 'refresh-tools',
-    'codex/register', 'codex/unregister',
+    'status', 'health', 'tools', 'endpoints', 'logs', 'probe', 'available',
+    'codex/register', 'codex/unregister', 'codex/use-app-model', 'codex/restore',
     'tunnel/accounts', 'tunnel/probe', 'tunnel/doctor',
     'tunnel/start', 'tunnel/start-all', 'tunnel/stop', 'tunnel/stop-all',
     'browser', 'browser/start', 'browser/stop',
@@ -121,6 +142,16 @@ await check('every settings route is mounted', () => {
   ]
   const missing = expected.filter((suffix) => !routes.has(`${BASE}/${suffix}`))
   assert.deepEqual(missing, [], `unmounted routes: ${missing.join(', ')}`)
+  // The retired process routes must be gone, or the page could drive a server
+  // that no longer exists.
+  for (const retired of ['start', 'stop', 'restart', 'refresh-tools']) {
+    assert.ok(!routes.has(`${BASE}/${retired}`), `the retired route ${retired} is still mounted`)
+  }
+})
+
+await check('the plugin serves its own MCP endpoint at /mcp', () => {
+  assert.ok(routes.has('/mcp'), 'the MCP endpoint is not mounted')
+  assert.ok(routes.has('/'), 'the identity route is not mounted')
 })
 
 /** Invoke a mounted route with a loopback request and read back its JSON body. */
@@ -187,6 +218,26 @@ await check('the status payload carries the sections the page renders', async ()
   assert.equal(body.settings.browserEnabled, true)
   assert.equal(body.tunnel.enabled, true)
   assert.equal(body.browser.enabled, true)
+  // The two facts the user's request turns on: the tools are native, and this app
+  // publishes both an MCP endpoint and its own model endpoint.
+  assert.equal(body.settings.sourceMode, 'native')
+  assert.equal(body.server.state, 'native')
+  assert.match(body.client.mcpUrl, /^http:\/\/127\.0\.0\.1:19387\/mcp$/)
+  assert.match(body.client.modelBaseUrl, /^http:\/\/127\.0\.0\.1:19387\/v1$/)
+  assert.ok(body.tools.toolCount >= 25, `expected a full native surface, got ${body.tools.toolCount}`)
+})
+
+await check('the endpoints route hands out paste-ready client config', async () => {
+  const { status, body } = await call('endpoints')
+  assert.equal(status, 200)
+  assert.equal(body.mcpUrl, 'http://127.0.0.1:19387/mcp')
+  assert.equal(body.modelBaseUrl, 'http://127.0.0.1:19387/v1')
+  assert.match(body.codexSnippet, /\[mcp_servers\.dsh-localcoding\]/)
+  assert.match(body.codexSnippet, /url = "http:\/\/127\.0\.0\.1:19387\/mcp"/)
+  // The model snippet is the deliverable for "run Codex on this app's model".
+  assert.match(body.modelSnippet, /\[model_providers\.dsh\]/)
+  assert.match(body.modelSnippet, /base_url = "http:\/\/127\.0\.0\.1:19387\/v1"/)
+  assert.match(body.modelSnippet, /wire_api = "chat"/)
 })
 
 await check('the codex section reports registration as a real three-state fact', async () => {

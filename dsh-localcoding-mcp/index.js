@@ -1,46 +1,53 @@
 /**
- * LocalCodingMCP as a DSH Harness plugin.
+ * LocalCodingMCP as a DSH Harness plugin — native tools, not a spawned server.
  *
- * The MCP server at `E:\ai\aiassistant\plugins\LocalCodingMCP_v0_3` is a .NET 8
- * process that exposes ~40 coding tools over HTTP. Three directions are wired here,
- * and each is independent:
+ * This plugin used to start `LocalCodingMCP.exe` and bridge its HTTP tools. It no
+ * longer does. The tool surface is implemented in this repo (`server/native/`) and
+ * registered straight into the host's `tools` service, which removes a child
+ * process, a port, a health check and a build step from the path between the agent
+ * and its tools.
  *
- *   1. **Bridge (local)** — every MCP tool is registered into the host `tools` service
- *      as `lcm_<tool>`, so the DeepSeek agent drives the workspace through the same
- *      tool surface ChatGPT gets. Names are prefixed because `read_file`,
- *      `write_file`, `search_code` and `apply_patch` would otherwise read as
- *      duplicates of the host's native `read`/`edit`/`grep` family.
- *   2. **Reverse delegation** — `lcm_codex_task` hands a self-contained coding task
- *      to `codex exec`. Once the plugin registers its `/mcp` endpoint with
- *      `codex mcp add --url`, the Codex child calls back into the same server, so the
- *      two agents compose over one tool surface.
- *   3. **GPT web → local** — a signed-in chatgpt.com account cannot reach a
- *      `127.0.0.1` endpoint, so `TunnelFleet` runs one `tunnel-client.exe` per
- *      configured account. Each daemon dials *out* to the OpenAI control plane, and
- *      the connector the user picks at `chatgpt.com/#settings/Connectors` then calls
- *      back through that outbound connection. This is the direction that makes the web
- *      model able to use this machine, and it is the one that needs no inbound port.
+ * Four things are wired here, and they share one tool table:
  *
- * The plugin owns every process it starts: the coding server, the tunnel daemons and
- * the optional browser MCP, all stopped with the host. Settings live in one Settings
- * section served by `server/http.js`.
+ *   1. **Native tools** — every file, search, git, build, process and undo tool is a
+ *      plain `ToolDefinition` from `server/native/index.js`.
+ *   2. **An MCP endpoint of our own** (`server/mcp-server.js`) serving exactly those
+ *      tools over streamable HTTP at `/mcp`. This is what `codex mcp add --url`
+ *      points at, and what the tunnel publishes to ChatGPT.
+ *   3. **A model endpoint** (`server/model-routes.js`) exposing this app's own model
+ *      access in OpenAI's dialect at `/v1`, so Codex runs on the same model as this
+ *      app instead of a third-party relay.
+ *   4. **The GPT-web tunnel** (`server/tunnel.js`) — one `tunnel-client.exe` per
+ *      ChatGPT account, dialing out so no inbound port is needed.
+ *
+ * `sourceMode: 'external-mcp'` still exists for anyone who wants to attach to a
+ * `LocalCodingMCP.exe` someone else started. It only ever *connects*; nothing in
+ * this plugin spawns that binary.
  *
  * @module dsh-localcoding-mcp
  */
+import { Buffer } from 'node:buffer'
+
 import z from '@deepseek-ai/schemastery'
 
 import { McpHttpClient } from './server/mcp-client.js'
-import { McpServerProcess, probeExistingServer } from './server/process.js'
+import { probeExistingServer } from './server/process.js'
 import { McpToolBridge } from './server/bridge.js'
 import {
   buildCodexToolDefinition,
+  configureCodexProvider,
   ensureCodexMcpServer,
+  latestCodexBackup,
   listCodexMcpServers,
   probeCodex,
   probeEndpoint,
   removeCodexMcpServer,
-  resolveCodexPath
+  resolveCodexPath,
+  restoreCodexConfig
 } from './server/codex.js'
+import { createNativeSurface } from './server/native/index.js'
+import { createMcpEndpoint } from './server/mcp-server.js'
+import { MODEL_BASE_PATH, modelBaseUrl, registerModelRoutes } from './server/model-routes.js'
 import { DEFAULT_CONTROL_PLANE_BASE_URL, TunnelFleet } from './server/tunnel.js'
 import { createBrowserProcess } from './server/browser.js'
 import { registerRoutes } from './server/http.js'
@@ -48,18 +55,10 @@ import { registerRoutes } from './server/http.js'
 /** Stable Cordis plugin name (also the id used in the Desktop patch row). */
 export const name = 'dsh-localcoding-mcp'
 
-/**
- * Only `tools` is a hard dependency. The HTTP plane is optional so the tools
- * still mount in a profile without a web server; `logger` comes from the base
- * context and needs no declaration.
- */
+/** Only `tools` is a hard dependency; the HTTP plane is optional by design. */
 export const inject = ['tools']
 
-/**
- * Settings namespace. Since host 0.1.7 a Settings section *is* the owning Loader
- * entry and upstream keys its form by the entry id, so this must stay equal to
- * the patch row id or the page has no form at all.
- */
+/** Settings namespace; must equal the patch row id or the page has no form. */
 export const SETTINGS_NAMESPACE = name
 
 /** MCP server name registered with the Codex CLI. */
@@ -71,8 +70,9 @@ export { McpToolBridge, buildToolDefinition, buildParameters, PREFIX } from './s
 export { resolveCodexPath, probeCodex, ensureCodexMcpServer, removeCodexMcpServer, listCodexMcpServers } from './server/codex.js'
 export { TunnelFleet, readAccounts, keyVariableName, decryptControlPlaneKey, probeProxy, resolveProxy } from './server/tunnel.js'
 export { BrowserMcpProcess, createBrowserProcess, resolveExtensionToken, DEFAULT_BROWSER_ENTRY } from './server/browser.js'
-
-const DEFAULT_EXE = 'E:\\ai\\aiassistant\\plugins\\LocalCodingMCP_v0_3\\mcp-accounts\\bin\\Release\\net8.0\\win-x64\\LocalCodingMCP.exe'
+export { createNativeSurface } from './server/native/index.js'
+export { createMcpEndpoint } from './server/mcp-server.js'
+export { registerModelRoutes, MODEL_BASE_PATH, modelBaseUrl } from './server/model-routes.js'
 
 /** Root of the LocalCodingMCP project; the tunnel and browser assets live below it. */
 const PROJECT_ROOT = 'E:\\ai\\aiassistant\\plugins\\LocalCodingMCP_v0_3\\mcp-accounts'
@@ -80,26 +80,53 @@ const PROJECT_ROOT = 'E:\\ai\\aiassistant\\plugins\\LocalCodingMCP_v0_3\\mcp-acc
 /**
  * Everything the Settings page can change.
  *
- * `workspaceRoot` is the directory the server is allowed to touch — it becomes
- * `--root`, so it is the security boundary of the whole bridge. `port` is only a
- * preference: the manager walks upward when the port is taken so a stale process
- * cannot silently hijack the URL the agent is configured against.
+ * `workspaceRoot` is the security boundary: every native tool resolves its paths
+ * inside it and refuses anything that escapes, which matters because the MCP
+ * endpoint is reachable by a ChatGPT connector.
  *
- * The `tunnel*` block configures the GPT-web direction. `tunnelAccountsPath` and
- * `tunnelExePath` point at assets the LocalCodingMCP project already owns; control
- * plane keys are never part of this config, because they live DPAPI-encrypted in the
- * project's `accounts.json` and are decrypted in memory only.
+ * `sourceMode` defaults to `native`. The `external-mcp` block exists so an
+ * already-running `LocalCodingMCP.exe` can still be attached to; nothing here
+ * spawns it.
+ *
+ * The `model*` block points Codex at this app's own model. `modelProvider` and
+ * `modelId` are blank by default, which means "use whatever this app is already
+ * routed to" — hardcoding a pair here would pin Codex to a model the app may not
+ * have.
  */
 export const Config = z.object({
   workspaceRoot: z.string().default('E:\\ai\\dsh-plugins'),
-  exePath: z.string().default(DEFAULT_EXE),
-  port: z.number().default(3011),
-  autoStart: z.boolean().default(true),
-  authToken: z.string().default(''),
+  /**
+   * The address clients are told to use for this plugin's endpoints.
+   *
+   * A route handler never needs to know its own origin, but Codex's config and the
+   * tunnel both need an absolute URL, so it is configuration with the app's
+   * conventional loopback address as the default. Override it if the GUI is reached
+   * on a different port.
+   */
+  publicBaseUrl: z.string().default('http://127.0.0.1:19387'),
+  /**
+   * `native` implements the tools here; `external-mcp` attaches to a running server.
+   *
+   * A plain string rather than `z.enum`: schemastery has no `enum`, and the value is
+   * validated where it is used anyway, so an unexpected string degrades to `native`
+   * instead of failing to load the plugin.
+   */
+  sourceMode: z.string().default('native'),
   toolTimeoutSeconds: z.number().default(300),
   autoRegisterWithCodex: z.boolean().default(false),
   codexPath: z.string().default(''),
   codexModel: z.string().default(''),
+
+  // ---- attach-only mode (never spawns) ----
+  externalMcpUrl: z.string().default('http://127.0.0.1:3011/mcp'),
+  externalMcpAuthToken: z.string().default(''),
+
+  // ---- this app's model, spoken in OpenAI's dialect ----
+  /** Serve `/v1` so Codex can use this app's model instead of its own relay. */
+  modelBridgeEnabled: z.boolean().default(true),
+  modelProvider: z.string().default(''),
+  modelId: z.string().default(''),
+  reasoningEffort: z.string().default(''),
 
   // ---- GPT web → local ----
   /** Master switch for the tunnel fleet; no daemon starts while it is off. */
@@ -123,9 +150,11 @@ export const Config = z.object({
 })
 
 /**
- * Build the controller the HTTP routes drive. It reads through a mutable holder
- * because the effect that owns the process re-runs whenever a setting changes;
- * routes stay mounted and keep talking to whatever is live.
+ * Build the controller the HTTP routes drive.
+ *
+ * It reads through a mutable holder because the effect that owns the tool surface
+ * re-runs whenever a setting changes, while the routes stay mounted and keep
+ * talking to whatever is live.
  */
 function createController (ctx, config, holder) {
   const logger = ctx.logger
@@ -139,46 +168,58 @@ function createController (ctx, config, holder) {
       const tunnel = holder.tunnel
       const browser = holder.browser
       // One `codex mcp list` feeds both facts the page needs: whether our row exists
-      // at all, and whether it still points at the port we answer on. The name alone
-      // is not enough — a stale row from an earlier session reads as "registered"
-      // while Codex calls a port nothing is listening on.
+      // at all, and whether it still points at the endpoint we answer on. The name
+      // alone is not enough — a stale row from an earlier session reads as
+      // "registered" while Codex calls a port nothing is listening on.
       const codexServers = await listCodexMcpServers(codexPathOf())
       const codexRow = codexServers.find((entry) => entry.name === CODEX_SERVER_NAME)
-      const codexUrl = live?.process.mcpUrl
+      const codexUrl = holder.mcpUrl
       return {
         settings: {
           workspaceRoot: config.workspaceRoot,
-          exePath: config.exePath,
-          port: config.port,
-          autoStart: config.autoStart,
-          authRequired: config.authToken.length > 0,
+          sourceMode: config.sourceMode,
           toolTimeoutSeconds: config.toolTimeoutSeconds,
           autoRegisterWithCodex: config.autoRegisterWithCodex,
           codexPath: config.codexPath,
           codexModel: config.codexModel,
+          externalMcpUrl: config.externalMcpUrl,
+          modelBridgeEnabled: config.modelBridgeEnabled,
+          modelProvider: config.modelProvider,
+          modelId: config.modelId,
+          reasoningEffort: config.reasoningEffort,
           tunnelEnabled: config.tunnelEnabled,
           browserEnabled: config.browserEnabled
         },
-        server: live ? live.process.describe() : { state: 'disabled' },
-        tools: live ? live.bridge.describe() : { toolCount: 0, tools: [] },
-        client: live
+        // Shaped like the old process description so the page and the tests read the
+        // same fields, even though nothing is spawned any more.
+        server: live
           ? {
-              connected: live.client.connected,
-              sessionId: live.client.sessionId,
-              serverInfo: live.client.serverInfo,
-              capabilities: live.client.capabilities
+              mode: config.sourceMode,
+              state: config.sourceMode === 'native' ? 'native' : 'external',
+              owned: false,
+              toolCount: live.describe().toolCount,
+              mcpUrl: holder.mcpUrl,
+              modelUrl: holder.modelUrl,
+              workspaceRoot: config.workspaceRoot
             }
-          : { connected: false },
+          : { state: 'disabled' },
+        tools: live ? live.describe() : { toolCount: 0, tools: [], failed: [] },
+        client: {
+          mode: config.sourceMode,
+          mcpUrl: holder.mcpUrl,
+          modelUrl: holder.modelUrl,
+          modelBaseUrl: holder.modelUrl,
+          sessions: holder.mcpEndpoint?.sessionCount ?? 0
+        },
         codex: {
           path: codexPathOf(),
           ...codex,
-          // The real readiness signal: `login status` cannot tell us whether the
-          // configured relay answers, and an unreachable one looks like a hang.
+          // The real readiness signal when a relay is in play: `login status` cannot
+          // tell us whether the configured endpoint answers.
           endpoint: await probeEndpoint(codex?.provider),
           mcpServerName: CODEX_SERVER_NAME,
           mcpUrl: codexUrl,
           registered: codexRow !== undefined,
-          // A row pointing somewhere else is the failure a boolean hides.
           registeredUrl: codexRow?.url,
           matchesOurEndpoint: codexRow !== undefined && codexUrl !== undefined && codexRow.url === codexUrl,
           servers: codexServers
@@ -194,133 +235,162 @@ function createController (ctx, config, holder) {
       }
     },
 
-    /** Live process health, cheap enough to poll. */
+    /** Live health, cheap enough to poll. */
     async health () {
-      return holder.current ? holder.current.process.health() : { status: 'disabled' }
+      const live = holder.current
+      if (!live) return { status: 'disabled' }
+      return {
+        status: 'ok',
+        mode: config.sourceMode,
+        toolCount: live.describe().toolCount,
+        mcpUrl: holder.mcpUrl
+      }
     },
 
     /** Tools currently registered in the host. */
     tools () {
-      return holder.current ? holder.current.bridge.describe() : { toolCount: 0, tools: [] }
+      return holder.current ? holder.current.describe() : { toolCount: 0, tools: [], failed: [] }
     },
 
-    /** Recent server output for the diagnostics panel. */
-    logs (limit) {
-      const entries = holder.current?.process.logs ?? []
-      return entries.slice(-Math.min(Math.max(limit, 1), 200))
+    /** What the endpoints are, and where a client should point. */
+    endpoints () {
+      const settings = holder.current ? { workspaceRoot: config.workspaceRoot, sourceMode: config.sourceMode } : {}
+      return {
+        mcpUrl: holder.mcpUrl,
+        modelBaseUrl: holder.modelUrl,
+        modelEnabled: config.modelBridgeEnabled === true && holder.live?.llm === true,
+        ...settings,
+        codexSnippet: holder.mcpUrl === undefined
+          ? undefined
+          : [
+              '# ~/.codex/config.toml',
+              '[mcp_servers.dsh-localcoding]',
+              `url = "${holder.mcpUrl}"`
+            ].join('\n'),
+        modelSnippet: holder.modelUrl === undefined
+          ? undefined
+          : [
+              '# point Codex at this app\'s model instead of a relay',
+              'model_provider = "dsh"',
+              '',
+              '[model_providers.dsh]',
+              'name = "DSH Harness"',
+              `base_url = "${holder.modelUrl}"`,
+              'wire_api = "chat"',
+              'requires_openai_auth = false'
+            ].join('\n')
+      }
     },
 
-    /** Handshake facts plus the head of the server's own instructions. */
+    /** No process logs any more; kept so the page's diagnostics panel still works. */
+    logs () {
+      return []
+    },
+
+    /** Handshake facts for the page, now about our own endpoint. */
     async probe () {
       const live = holder.current
-      if (!live) return { ok: false, error: 'server not configured' }
-      try {
-        await live.client.ensureSession()
-        return {
-          ok: true,
-          sessionId: live.client.sessionId,
-          serverInfo: live.client.serverInfo,
-          capabilities: live.client.capabilities,
-          instructions: String(live.client.instructions ?? '').slice(0, 4000)
-        }
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error) }
+      if (!live) return { ok: false, error: 'no tool surface is mounted' }
+      const definitions = live.definitions ?? []
+      return {
+        ok: true,
+        sessionId: undefined,
+        serverInfo: { name: name, version: '0.2.0' },
+        capabilities: { tools: { listChanged: true } },
+        instructions: [
+          `${definitions.length} native tools are registered in the host.`,
+          `MCP endpoint: ${holder.mcpUrl ?? '(not mounted)'}`,
+          `Model endpoint: ${holder.modelUrl ?? '(disabled)'}`,
+          'No child process is involved: the tools run in the plugin process.'
+        ].join('\n')
       }
     },
 
-    /** Tool list straight from the MCP server, registered or not. */
+    /** The tool list as an MCP client would see it. */
     async availableTools () {
       const live = holder.current
-      if (!live) return { ok: false, error: 'server not configured', tools: [] }
-      try {
-        const tools = await live.client.listTools()
-        return {
-          ok: true,
-          count: tools.length,
-          tools: tools.map((tool) => ({
-            name: tool.name,
-            description: String(tool.description ?? '').slice(0, 400),
-            parameters: tool.inputSchema ?? null
-          }))
-        }
-      } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error), tools: [] }
+      if (!live) return { ok: false, error: 'no tool surface is mounted', tools: [] }
+      return {
+        ok: true,
+        count: live.definitions.length,
+        tools: live.definitions.map((definition) => ({
+          name: definition.name,
+          description: String(definition.description ?? '').slice(0, 400),
+          parameters: definition.parameters ?? null
+        }))
       }
     },
 
-    async start () {
-      const live = holder.current
-      if (!live) throw new Error('server not configured')
-      live.client.reset()
-      return live.process.start()
-    },
-
-    async stop () {
-      const live = holder.current
-      if (!live) throw new Error('server not configured')
-      live.bridge.dispose()
-      live.client.reset()
-      await live.process.stop()
-      return live.process.describe()
-    },
-
-    async restart () {
-      const live = holder.current
-      if (!live) throw new Error('server not configured')
-      await live.process.restart()
-      live.client.reset()
-      return live.process.describe()
-    },
-
-    /** Re-list tools and re-register; also recovers a dropped session. */
-    async refreshTools () {
-      const live = holder.current
-      if (!live) throw new Error('server not configured')
-      live.bridge.dispose()
-      live.client.reset()
-      await live.process.start()
-      return live.bridge.sync()
-    },
-
-    /** Call one MCP tool directly, so the page can prove the wiring without a chat turn. */
+    /**
+     * Run one tool the way a remote MCP caller would.
+     *
+     * Rejections are returned as `ok:false` rather than thrown, because the caller
+     * here is the settings page's console, which has to show the failure.
+     */
     async callTool (toolName, args) {
       const live = holder.current
-      if (!live) throw new Error('server not configured')
+      if (!live) throw new Error('no tool surface is mounted')
       const startedAt = Date.now()
-      const result = await live.client.callTool(toolName, args)
-      return {
-        tool: toolName,
-        ok: result.isError !== true,
-        durationMs: Date.now() - startedAt,
-        text: result.text,
-        isError: result.isError === true
+      try {
+        const content = await live.invoke(toolName, args)
+        return { tool: toolName, ok: true, durationMs: Date.now() - startedAt, text: content.map((block) => block.text ?? '').join('\n') }
+      } catch (error) {
+        return {
+          tool: toolName,
+          ok: false,
+          isError: true,
+          durationMs: Date.now() - startedAt,
+          text: error instanceof Error ? error.message : String(error)
+        }
       }
     },
 
-    /** `codex mcp add dsh-localcoding --url <our /mcp>` so Codex can call us back. */
+    /** Rewrite the Codex MCP row to point at our endpoint. Opt-in by design. */
     async registerWithCodex () {
-      const live = holder.current
-      if (!live) throw new Error('server not configured')
-      if (!(await probeExistingServer(live.process.healthUrl))) await live.process.start()
+      if (holder.mcpUrl === undefined) throw new Error('the MCP endpoint is not mounted, so there is nothing to register')
       const codexPath = codexPathOf()
-      const result = await ensureCodexMcpServer(codexPath, CODEX_SERVER_NAME, live.process.mcpUrl)
+      const result = await ensureCodexMcpServer(codexPath, CODEX_SERVER_NAME, holder.mcpUrl)
       logger?.info?.(`[localcoding-mcp] registered ${result.name} -> ${result.url} with codex`)
-      return { ...result, toolCount: live.bridge.describe().toolCount }
+      return { ...result, toolCount: holder.current?.describe().toolCount ?? 0 }
     },
 
     async unregisterFromCodex () {
-      return removeCodexMcpServer(codexPathOf(), CODEX_SERVER_NAME)
+      const result = await removeCodexMcpServer(codexPathOf(), CODEX_SERVER_NAME)
+      logger?.info?.(`[localcoding-mcp] removed ${CODEX_SERVER_NAME} from codex`)
+      return result
+    },
+
+    /**
+     * Point Codex at this app's own model endpoint.
+     *
+     * This is the replacement for a third-party relay: the plugin already serves
+     * this app's model access at `/v1`, so the only thing missing was telling Codex
+     * about it. A backup of the user's config is written first.
+     */
+    async useAppModel () {
+      if (holder.modelUrl === undefined) throw new Error('the model endpoint is not mounted, so there is nothing to point Codex at')
+      const result = await configureCodexProvider('dsh', holder.modelUrl, {
+        model: config.codexModel || undefined
+      })
+      logger?.info?.(`[localcoding-mcp] codex now uses ${holder.modelUrl} (backup ${result.backupPath})`)
+      return result
+    },
+
+    async restoreCodexConfig (backupPath) {
+      return restoreCodexConfig(backupPath)
+    },
+
+    /** Undo `useAppModel` using the newest backup this plugin created. */
+    async undoUseAppModel () {
+      const latest = latestCodexBackup()
+      if (latest === undefined) throw new Error('no backup from this plugin was found, so there is nothing to restore')
+      const result = await restoreCodexConfig(latest)
+      logger?.info?.(`[localcoding-mcp] restored codex config from ${latest}`)
+      return result
     },
 
     // ---- GPT web → local ----
 
-    /**
-     * Accounts from `accounts.json` plus whatever the fleet currently holds.
-     *
-     * Same shape as the `status` tunnel section — the page treats "enabled but empty"
-     * and "disabled" as different messages, so both routes have to agree on which one
-     * they are reporting.
-     */
     tunnelDescribe () {
       const tunnel = holder.tunnel
       return tunnel
@@ -328,36 +398,36 @@ function createController (ctx, config, holder) {
         : { enabled: false, reason: 'tunnel fleet is disabled in settings', accounts: [], skipped: [] }
     },
 
-    async tunnelProbe (accountId) {
-      const tunnel = requireTunnel(holder)
-      return tunnel.probe(accountId)
+    async tunnelProbe (id) {
+      if (!holder.tunnel) throw new Error('tunnel fleet is disabled in settings')
+      return holder.tunnel.probe(id)
     },
 
-    async tunnelDoctor (accountId) {
-      const tunnel = requireTunnel(holder)
-      return tunnel.doctor(accountId)
+    async tunnelDoctor (id) {
+      if (!holder.tunnel) throw new Error('tunnel fleet is disabled in settings')
+      return holder.tunnel.doctor(id)
     },
 
-    async tunnelStart (accountId) {
-      const tunnel = requireTunnel(holder)
-      // The tunnel forwards to whatever /mcp the coding server currently answers on,
-      // so an adopted or relocated server must be reflected before a daemon starts.
-      await syncTunnelTarget(holder, config, logger)
-      return tunnel.start(accountId)
+    async tunnelStart (id) {
+      if (!holder.tunnel) throw new Error('tunnel fleet is disabled in settings')
+      holder.tunnel.mcpUrl = holder.mcpUrl
+      return holder.tunnel.start(id)
     },
 
     async tunnelStartAll () {
-      const tunnel = requireTunnel(holder)
-      await syncTunnelTarget(holder, config, logger)
-      return tunnel.startAll()
+      if (!holder.tunnel) throw new Error('tunnel fleet is disabled in settings')
+      holder.tunnel.mcpUrl = holder.mcpUrl
+      return holder.tunnel.startAll()
     },
 
-    async tunnelStop (accountId) {
-      return requireTunnel(holder).stop(accountId)
+    async tunnelStop (id) {
+      if (!holder.tunnel) throw new Error('tunnel fleet is disabled in settings')
+      return holder.tunnel.stop(id)
     },
 
     async tunnelStopAll () {
-      return requireTunnel(holder).stopAll()
+      if (!holder.tunnel) throw new Error('tunnel fleet is disabled in settings')
+      return holder.tunnel.stopAll()
     },
 
     browserDescribe () {
@@ -368,204 +438,289 @@ function createController (ctx, config, holder) {
     },
 
     async browserStart () {
-      const browser = holder.browser
-      if (!browser) throw new Error('browser tools are disabled in settings')
-      return browser.start()
+      if (!holder.browser) throw new Error('browser tools are disabled in settings')
+      return holder.browser.start()
     },
 
     async browserStop () {
-      const browser = holder.browser
-      if (!browser) throw new Error('browser tools are disabled in settings')
-      return browser.stop()
+      if (!holder.browser) throw new Error('browser tools are disabled in settings')
+      return holder.browser.stop()
     }
   }
 }
 
-/** A tunnel action is only meaningful once the fleet exists. */
-function requireTunnel (holder) {
-  const tunnel = holder.tunnel
-  if (!tunnel) throw new Error('tunnel fleet is disabled in settings — enable it first')
-  return tunnel
-}
-
 /**
- * Point the fleet at the port the coding server actually ended up on.
+ * The plugin entry point.
  *
- * The tunnel forwards to a literal URL, so a server that adopted an existing process
- * or walked to the next free port would otherwise be advertised with the stale port
- * from the previous configuration.
- */
-async function syncTunnelTarget (holder, config, logger) {
-  const tunnel = holder.tunnel
-  const live = holder.current
-  if (!tunnel || !live) return
-  const target = live.process.mcpUrl
-  if (tunnel.mcpUrl === target) return
-  tunnel.mcpUrl = target
-  logger?.info?.(`[localcoding-mcp/tunnel] target updated to ${target}`)
-}
-
-/**
- * Wire the plugin.
- *
- * @param ctx - Host context carrying the `tools` service (plus `webServer` when
- *   the HTTP plane is mounted).
- * @param config - This plugin's resolved `Config`, supplied by the Loader.
+ * The tool surface lives in one Cordis effect, so editing any setting tears the
+ * surface down and rebuilds it — which is what makes a settings change take effect
+ * without a restart for the parts that do not need one.
  */
 export function apply (ctx, config) {
-  const holder = { current: undefined, tunnel: undefined, browser: undefined }
+  const holder = { current: undefined, tunnel: undefined, browser: undefined, mcpUrl: undefined, modelUrl: undefined, mcpEndpoint: undefined, live: {} }
 
-  // Settings routes are independent of the process lifetime: the page has to
-  // render while the server is stopped, which is exactly when it is useful.
-  ctx.inject(['webServer'], (webCtx) =>
-    webCtx.effect(() => registerRoutes(webCtx, createController(ctx, config, holder)), 'dsh-localcoding-mcp: settings routes')
-  )
+  const controller = createController(ctx, config, holder)
 
-  ctx.effect(async () => {
-    // Reading every field here is what makes this effect re-run when the user
-    // edits settings: Cordis tracks the config reads performed synchronously.
+  // Routes are mounted on the optional web plane; without it the agent still gets
+  // every native tool, which is the part that matters.
+  //
+  // The MCP endpoint is created here, not in the tool-surface effect below, because
+  // a route handler needs a real Cordis context (`webCtx.effect`, `webCtx.webServer`)
+  // — `ctx.get('webServer')` returns the bare service, which has neither. The two
+  // effects are independent and bind late through `holder`, so neither depends on
+  // the other's ordering.
+  ctx.inject(['webServer'], (webCtx) => {
+    webCtx.effect(() => registerRoutes(webCtx, controller), 'dsh-localcoding-mcp: settings routes')
+
+    if (config.modelBridgeEnabled !== false) {
+      const disposeModel = registerModelRoutes(webCtx, {
+        llmProvider: () => ctx.get('llm'),
+        configProvider: () => ({
+          modelProvider: config.modelProvider,
+          modelId: config.modelId,
+          reasoningEffort: config.reasoningEffort
+        })
+      })
+      webCtx.effect(() => disposeModel, 'dsh-localcoding-mcp: model routes')
+    }
+
+    // The MCP endpoint serves exactly the tools the local agent gets, so a remote
+    // caller (Codex, or ChatGPT through the tunnel) sees one surface, not a copy.
+    const mcpEndpoint = createMcpEndpoint({
+      name,
+      version: '0.2.0',
+      workspace: config.workspaceRoot,
+      instructions: 'Tools for reading, editing, searching and building the workspace this harness is rooted in. Paths are relative to that workspace root.',
+      listDefinitions: () => holder.current?.definitions ?? [],
+      callTool: async (toolName, args) => {
+        const live = holder.current
+        if (!live) throw new Error('the tool surface is not mounted')
+        return { content: await live.invoke(toolName, args) }
+      }
+    })
+    holder.mcpEndpoint = mcpEndpoint
+
+    webCtx.effect(() => {
+      const disposers = []
+      disposers.push(webCtx.webServer.register({
+        kind: 'exact',
+        path: '/mcp',
+        handler: (req, res) => {
+          void mcpEndpoint.handle(req, res).then((handled) => {
+            if (!handled && !res.writableEnded) {
+              res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
+              res.end(JSON.stringify({ error: 'not found' }))
+            }
+          }).catch((error) => {
+            webCtx.logger?.warn?.(error instanceof Error ? error : new Error(String(error)))
+            if (!res.headersSent && !res.writableEnded) {
+              res.writeHead(500, { 'content-type': 'application/json; charset=utf-8' })
+              res.end(JSON.stringify({ error: 'internal error' }))
+            }
+          })
+        }
+      }))
+      disposers.push(webCtx.webServer.register({
+        kind: 'exact',
+        path: '/',
+        handler: (req, res) => {
+          const body = JSON.stringify(mcpEndpoint.identity())
+          res.writeHead(200, {
+            'content-type': 'application/json; charset=utf-8',
+            'cache-control': 'no-store',
+            'content-length': Buffer.byteLength(body)
+          })
+          res.end(body)
+        }
+      }))
+      return () => {
+        while (disposers.length > 0) {
+          const dispose = disposers.pop()
+          try {
+            dispose()
+          } catch {
+            // keep unwinding
+          }
+        }
+      }
+    }, 'dsh-localcoding-mcp: mcp endpoint')
+
+    // The URL a client must be told. A route handler never needs its own origin, but
+    // Codex and the tunnel do, so it comes from configuration with the app's
+    // conventional loopback address as the default.
+    const origin = String(config.publicBaseUrl ?? '').replace(/\/+$/, '') || 'http://127.0.0.1:19387'
+    holder.baseUrl = origin
+    holder.mcpUrl = `${origin}/mcp`
+    holder.modelUrl = config.modelBridgeEnabled === false ? undefined : `${origin}${MODEL_BASE_PATH}`
+  })
+
+  ctx.effect(() => {
+    // Read every setting synchronously so a config edit re-runs this effect.
     const workspaceRoot = String(config.workspaceRoot ?? '')
-    const exePath = String(config.exePath ?? '')
-    const preferredPort = Number(config.port ?? 3011)
-    const autoStart = config.autoStart !== false
-    const authToken = String(config.authToken ?? '')
-    const toolTimeoutMs = Math.max(1, Number(config.toolTimeoutSeconds ?? 300)) * 1000
-    const codexPath = resolveCodexPath(config.codexPath)
+    const sourceMode = config.sourceMode === 'external-mcp' ? 'external-mcp' : 'native'
+    const toolTimeoutMs = Math.max(1_000, Number(config.toolTimeoutSeconds ?? 300) * 1_000)
+    const externalMcpUrl = String(config.externalMcpUrl ?? '')
+    const externalToken = String(config.externalMcpAuthToken ?? '')
     const codexModel = String(config.codexModel ?? '')
     const autoRegisterWithCodex = config.autoRegisterWithCodex === true
-
     const tunnelEnabled = config.tunnelEnabled === true
     const browserEnabled = config.browserEnabled === true
-    const tunnelAutoStartAll = config.tunnelAutoStartAll === true
     const browserAutoStart = config.browserAutoStart === true
-    const tunnelOptions = {
-      exePath: String(config.tunnelExePath ?? ''),
-      accountsPath: String(config.tunnelAccountsPath ?? ''),
-      profileDir: String(config.tunnelProfileDir ?? ''),
-      logDir: String(config.tunnelLogDir ?? ''),
-      controlPlaneBaseUrl: String(config.tunnelControlPlaneBaseUrl ?? DEFAULT_CONTROL_PLANE_BASE_URL),
-      healthPortBase: Math.max(1024, Number(config.tunnelHealthPortBase ?? 8080)),
-      readyTimeoutSeconds: Math.max(5, Number(config.tunnelReadyTimeoutSeconds ?? 45)),
-      proxy: String(config.tunnelProxy ?? ''),
-      logger: ctx.logger
-    }
-    const browserOptions = {
-      entry: String(config.browserEntry ?? ''),
-      port: Math.max(1024, Number(config.browserPort ?? 8931)),
-      autoStart: browserAutoStart,
-      logger: ctx.logger
+    const tunnelAutoStartAll = config.tunnelAutoStartAll === true
+
+    if (workspaceRoot === '') throw new Error('workspaceRoot must be set to a directory')
+
+    let live
+    if (sourceMode === 'native') {
+      const surface = createNativeSurface({ workspaceRoot, tools: ctx.tools, logger: ctx.logger })
+      live = {
+        kind: 'native',
+        definitions: surface.definitions,
+        describe: () => surface.describe(),
+        /** Run one tool and render it, the same path the host takes. */
+        async invoke (toolName, args) {
+          const definition = surface.definitions.find((entry) => entry.name === toolName)
+          if (!definition) throw new Error(`unknown tool: ${toolName}`)
+          const value = await definition.execute(args ?? {}, {})
+          return definition.output.render(args ?? {}, value)
+        },
+        dispose: () => surface.dispose()
+      }
+    } else {
+      if (externalMcpUrl === '') throw new Error('externalMcpUrl must be set in external-mcp mode')
+      const client = new McpHttpClient(externalMcpUrl, {
+        headers: externalToken ? { Authorization: `Bearer ${externalToken}` } : {}
+      })
+      const bridge = new McpToolBridge({
+        tools: ctx.tools,
+        client,
+        serverUrl: externalMcpUrl,
+        timeoutMs: toolTimeoutMs,
+        logger: ctx.logger
+      })
+      live = {
+        kind: 'external',
+        definitions: [],
+        describe: () => bridge.describe(),
+        async invoke (toolName, args) {
+          const result = await bridge.invoke(toolName, args)
+          return [{ type: 'text', text: result.text ?? '' }]
+        },
+        dispose: () => {
+          bridge.dispose()
+          void client.close()
+        },
+        start: async () => {
+          // Attach-only: never spawn. A server that is not running is an error the
+          // page reports, not something the plugin starts behind the user's back.
+          const health = await probeExistingServer(externalMcpUrl.replace(/\/mcp$/, '/health'))
+          if (!health) throw new Error(`no LocalCodingMCP server is answering at ${externalMcpUrl}`)
+          await bridge.sync()
+          return health
+        }
+      }
     }
 
-    const process_ = new McpServerProcess({
-      exePath,
-      workspaceRoot,
-      port: preferredPort,
-      autoStart,
-      ...authToken ? { authToken } : {},
-      logger: ctx.logger
-    })
-    const client = new McpHttpClient(
-      `http://127.0.0.1:${preferredPort}/mcp`,
-      { headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} }
-    )
-    const bridge = new McpToolBridge({
-      tools: ctx.tools,
-      client,
-      serverUrl: client.endpoint,
-      timeoutMs: toolTimeoutMs,
-      logger: ctx.logger
-    })
-
-    const live = { process: process_, client, bridge }
     holder.current = live
-    ctx.logger?.info?.(`[localcoding-mcp] workspace=${workspaceRoot} exe=${exePath} port=${preferredPort} autoStart=${autoStart}`)
+    holder.live = { llm: ctx.get('llm') !== undefined }
+    ctx.logger?.info?.(`[localcoding-mcp] mode=${sourceMode} workspace=${workspaceRoot} tools=${live.describe().toolCount}`)
 
-    try {
-      await process_.start()
-      // Adopt the port the manager actually settled on (it may differ from the
-      // preference) before the client and the Codex tool point at it.
-      client.endpoint = process_.mcpUrl
-      bridge.serverUrl = process_.mcpUrl
-      await bridge.sync()
-    } catch (error) {
-      // A server that cannot start must not stop the plugin from loading: the
-      // Settings page exists precisely to fix this.
-      ctx.logger?.warn?.(error instanceof Error ? error : new Error(String(error)))
+    if (sourceMode === 'external-mcp') {
+      void live.start?.().catch((error) => {
+        ctx.logger?.warn?.(error instanceof Error ? error : new Error(String(error)))
+      })
     }
 
+    // `lcm_codex_task` needs an endpoint to tell Codex about. Without the web plane
+    // it points at the conventional URL and says so, rather than being absent.
     const disposeCodex = ctx.tools.register(buildCodexToolDefinition({
-      mcpUrl: process_.mcpUrl,
+      mcpUrl: holder.mcpUrl,
       workspaceRoot,
       resolvePath: () => resolveCodexPath(config.codexPath),
       logger: ctx.logger,
       defaultModel: codexModel || undefined
     }))
 
-    // Registering with Codex is opt-in: it rewrites `~/.codex/config.toml`, which
-    // is the user's own CLI configuration, not this plugin's.
-    if (autoRegisterWithCodex && codexPath && process_.state !== 'stopped') {
+    const cleanup = []
+    cleanup.push(() => {
       try {
-        const result = await ensureCodexMcpServer(codexPath, CODEX_SERVER_NAME, process_.mcpUrl)
-        ctx.logger?.info?.(`[localcoding-mcp] codex MCP server ${result.name} -> ${result.url}`)
-      } catch (error) {
-        ctx.logger?.warn?.(error instanceof Error ? error : new Error(String(error)))
+        disposeCodex()
+      } catch {
+        // registry teardown must not mask the rest
       }
+    })
+
+    if (autoRegisterWithCodex && holder.mcpUrl !== undefined) {
+      void ensureCodexMcpServer(resolveCodexPath(config.codexPath), CODEX_SERVER_NAME, holder.mcpUrl)
+        .then((result) => ctx.logger?.info?.(`[localcoding-mcp] codex MCP server ${result.name} -> ${result.url}`))
+        .catch((error) => ctx.logger?.warn?.(error instanceof Error ? error : new Error(String(error))))
     }
 
     // ---- GPT web → local ----
     //
-    // The fleet is only built when enabled, and it is bound to the URL the coding
-    // server really answers on. Starting daemons is opt-in on top of that: each one
-    // opens an outbound connection to the OpenAI control plane with a real
-    // credential, so `tunnelAutoStartAll` is off by default and the page drives it.
+    // The fleet publishes the MCP endpoint above. Starting daemons is opt-in on top
+    // of enabling the fleet: each one opens an outbound connection to the OpenAI
+    // control plane with a real credential.
     let fleet
-    if (tunnelEnabled) {
-      fleet = new TunnelFleet({ ...tunnelOptions, mcpUrl: process_.mcpUrl })
+    if (tunnelEnabled && holder.mcpUrl !== undefined) {
+      fleet = new TunnelFleet({
+        exePath: String(config.tunnelExePath ?? ''),
+        accountsPath: String(config.tunnelAccountsPath ?? ''),
+        profileDir: String(config.tunnelProfileDir ?? ''),
+        logDir: String(config.tunnelLogDir ?? ''),
+        controlPlaneBaseUrl: String(config.tunnelControlPlaneBaseUrl ?? DEFAULT_CONTROL_PLANE_BASE_URL),
+        healthPortBase: Math.max(1024, Number(config.tunnelHealthPortBase ?? 8080)),
+        readyTimeoutSeconds: Math.max(5, Number(config.tunnelReadyTimeoutSeconds ?? 45)),
+        proxy: String(config.tunnelProxy ?? ''),
+        mcpUrl: holder.mcpUrl,
+        logger: ctx.logger
+      })
       holder.tunnel = fleet
-      if (tunnelAutoStartAll && process_.state !== 'stopped') {
-        try {
-          const { results } = await fleet.startAll()
-          const ready = results.filter((entry) => entry.state === 'READY').length
-          ctx.logger?.info?.(`[localcoding-mcp/tunnel] ${ready}/${results.length} account tunnel(s) ready`)
-        } catch (error) {
-          ctx.logger?.warn?.(error instanceof Error ? error : new Error(String(error)))
-        }
+      if (tunnelAutoStartAll) {
+        void fleet.startAll()
+          .then(({ results }) => {
+            const ready = results.filter((entry) => entry.state === 'READY').length
+            ctx.logger?.info?.(`[localcoding-mcp/tunnel] ${ready}/${results.length} account tunnel(s) ready`)
+          })
+          .catch((error) => ctx.logger?.warn?.(error instanceof Error ? error : new Error(String(error))))
       }
     }
 
     // ---- optional browser surface ----
-    //
-    // Independent of the tunnel on purpose: the tunnel publishes exactly one MCP
-    // server URL, so exposing the browser to ChatGPT means pointing a second
-    // connector at it. Starting it here when enabled keeps the page simple.
     let browser
     if (browserEnabled) {
-      browser = createBrowserProcess(browserOptions)
+      browser = createBrowserProcess({
+        entry: String(config.browserEntry ?? ''),
+        port: Math.max(1024, Number(config.browserPort ?? 8931)),
+        autoStart: browserAutoStart,
+        logger: ctx.logger
+      })
       holder.browser = browser
       if (browserAutoStart) {
-        try {
-          await browser.start()
-        } catch (error) {
-          ctx.logger?.warn?.(error instanceof Error ? error : new Error(String(error)))
-        }
+        void browser.start().catch((error) => ctx.logger?.warn?.(error instanceof Error ? error : new Error(String(error))))
       }
     }
 
     return () => {
-      try {
-        disposeCodex()
-      } catch { /* registry teardown must not mask the rest */ }
-      bridge.dispose()
+      for (const step of cleanup) {
+        try {
+          step()
+        } catch {
+          // one failing step must not strand the others
+        }
+      }
+      // Order matters: unregister the tools before tearing down the surface whose
+      // closures they call, so a call racing the unload fails cleanly rather than
+      // reaching into disposed state.
+      live.dispose()
       holder.current = undefined
-      // Stop every daemon we started. `dispose()` never throws, so one stubborn
+      holder.mcpUrl = undefined
+      holder.modelUrl = undefined
+      // Stop every daemon we started; `dispose()` never throws, so one stubborn
       // child cannot keep the rest alive.
-      void Promise.all([
-        client.close().finally(() => process_.dispose()),
-        fleet?.dispose(),
-        browser?.dispose()
-      ])
+      void Promise.all([fleet?.dispose(), browser?.dispose()])
       holder.tunnel = undefined
       holder.browser = undefined
     }
-  }, 'dsh-localcoding-mcp: bridge')
+  }, 'dsh-localcoding-mcp: native tool surface')
 }

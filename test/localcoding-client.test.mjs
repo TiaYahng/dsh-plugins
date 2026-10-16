@@ -158,14 +158,23 @@ function texts (node, out = []) {
 }
 const rendered = texts(tree).join(' | ')
 // The cards have to be there on the first paint, before any status has
-// arrived — the page is most useful while the server is still starting.
+// arrived — the page is most useful before the first poll returns.
 for (const needle of ['settings.localCodingMcp/heading', 'settings.localCodingMcp/server', 'settings.localCodingMcp/tools', 'settings.localCodingMcp/codex', 'settings.localCodingMcp/tunnel', 'settings.localCodingMcp/logs']) {
   if (!rendered.includes(needle)) throw new Error(`first paint is missing "${needle}"`)
 }
-// Every action button must be present on the first paint, before any status
-// has arrived — the page has to be useful while the server is still starting.
-for (const needle of ['settings.localCodingMcp/start', 'settings.localCodingMcp/stop', 'settings.localCodingMcp/restart', 'settings.localCodingMcp/registerCodex', 'settings.localCodingMcp/consent']) {
+// Every action button must be present on the first paint. There is no process to
+// start or stop any more — the tools are native and always mounted — so the
+// actions that remain are the ones that talk to an external system.
+for (const needle of ['settings.localCodingMcp/registerCodex', 'settings.localCodingMcp/consent', 'settings.localCodingMcp/useAppModel', 'settings.localCodingMcp/undoAppModel']) {
   if (!rendered.includes(needle)) throw new Error(`first paint is missing action "${needle}"`)
+}
+// The old process controls must be gone: nothing spawns a server any more, so a
+// start/stop/restart button would be a lie on the page. Matched with a trailing
+// boundary because `/stop` is a prefix of `/stopped`, which the page legitimately
+// renders as a state label.
+for (const needle of ['start', 'stop', 'restart', 'refreshTools']) {
+  const pattern = new RegExp(`settings\\.localCodingMcp/${needle}(?![A-Za-z])`)
+  if (pattern.test(rendered)) throw new Error(`the page still renders the retired process action "${needle}"`)
 }
 // The GPT-web card must render its own copy before any account is known,
 // otherwise the "not enabled" explanation is unreachable.
