@@ -388,6 +388,11 @@ copyFile(`${upstreamDir}/LICENSE`, `${freeModelDir}/LICENSE`)
   }
   swap("path: '/api/our-free-model'", `path: '${API_PREFIX}'`, 'the API prefix is ours')
   swap("'/api/our-free-model/events'", `'${API_PREFIX}/events'`, 'the events route moves with it')
+  // The handler strips its own prefix off `url.pathname` before matching
+  // '/summary' and the rest. It is a second copy of the same string, so
+  // moving only the mount leaves every route falling through to 404 — which
+  // looks like "the tab has no data", not like a rename that missed a spot.
+  swap('/^\\/api\\/our-free-model/', `/^\\${API_PREFIX.replace(/\//g, '\\/')}/`, 'the handler strips our prefix too')
   swap(`'our-free-model: settings API mounted at /api/our-free-model'`, `'dsh-comprehensive-platform: free-model API mounted at ${API_PREFIX}'`, 'the mount log names the new prefix')
   swap("path.join(PKG_DIR, 'package.json')", "path.join(PKG_DIR, '..', 'package.json')", 'the reported version is this plugin\'s')
   swap("new URL('index.js', import.meta.url)", "new URL('server.js', import.meta.url)", 'the reload entry point is this file')
@@ -435,6 +440,7 @@ as they are and patched only where the code believed it owned the machine:
 | Where | What | Why |
 | --- | --- | --- |
 | server.js | API prefix → ${API_PREFIX} | two plugins must not serve one prefix |
+| server.js | the handler's own prefix strip → ${API_PREFIX} | the mount and the strip are two copies of one string; moving only the mount 404s every route |
 | server.js | distributionOf → always managed | its updater, announcement feed and hot reload rewrite the installed package, which is this plugin's bytes |
 | server.js | version read from the parent package.json | there is no package.json of its own here |
 | src/store.js | DATA_DIR_NAME → comprehensive-platform | two writers on one catalog corrupt it |

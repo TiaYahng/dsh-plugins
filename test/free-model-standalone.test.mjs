@@ -29,6 +29,25 @@ if (server.includes(`'${PREFIX}/events'`) === false) throw new Error('the events
 if (client.includes('api/our-free-model')) throw new Error('the page still asks the owner API')
 if (client.includes(PREFIX.slice(1)) === false) throw new Error('the page does not ask our API')
 
+// The handler strips its own prefix back off the pathname before comparing it
+// to '/summary' and friends. There are two copies of that prefix on this path
+// now — the one it registers and the one it strips — and only the first was
+// moved. When they disagree every route falls through to 404, which reads
+// exactly like "the tab has no data".
+{
+  const strips = [...server.matchAll(/pathname\.replace\((.+?),\s*''\)/g)].map((m) => m[1])
+  for (const strip of strips) {
+    if (strip.includes('our-free-model')) {
+      throw new Error(`the handler still strips the owner prefix (${strip}); every route would 404`)
+    }
+    const re = new RegExp(strip.slice(1, strip.lastIndexOf('/')))
+    if (re.test(PREFIX + '/summary') === false) {
+      throw new Error(`the handler strips ${strip}, which does not match our prefix ${PREFIX}`)
+    }
+  }
+  if (strips.length === 0) throw new Error('no prefix strip found; the check above is now vacuous')
+}
+
 // Its own state. Two writers on one catalog is how an install corrupts itself.
 const dataDir = store.match(/DATA_DIR_NAME = '([^']+)'/)?.[1]
 if (dataDir === undefined || dataDir === 'our-free-model') throw new Error('the vendored store kept the owner directory')

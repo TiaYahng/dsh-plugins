@@ -1731,7 +1731,7 @@ const POOL_REASONS = new Set(['no-lane', 'gateway-status', 'malformed', 'unreach
 function createApiRoutes(deps) {
   return async function handler(req, res) {
     const url = new URL(req.url ?? '/', 'http://localhost')
-    const routePath = url.pathname.replace(/^\/api\/our-free-model/, '').replace(/\/+$/, '') || '/'
+    const routePath = url.pathname.replace(/^\/api\/comprehensive-platform\/free-model/, '').replace(/\/+$/, '') || '/'
     const method = String(req.method ?? 'GET').toUpperCase()
     const rejection = rejectionFor(req, deps.connection, deps.onAdmissionRejection)
     const send = (status, payload) => {
