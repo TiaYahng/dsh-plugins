@@ -360,6 +360,24 @@ if (fork.includes("? saved : 'free'")) throw new Error('the landing page still n
 if (fork.includes('catch { return \'free\' }')) throw new Error('the fallback still names the removed page')
 console.log('bar: one line, tabs and star · EAC third, both lists agree, landing is the first tab')
 
+// The 「公告中心」 panel is off both pages that carried it. It read the owner's
+// announcement feed, which this copy does not hold a stream for, so it could
+// only ever show an empty noticeboard. Removing it must take the fetch with it:
+// a page that still asks for a feed it will never show is a page waiting to be
+// blamed for a slow load.
+if (fork.includes('h(NewsPanel,') || fork.includes('function NewsPanel')) {
+  throw new Error('the announcement panel is back')
+}
+if (fork.includes('function NewsItem')) throw new Error('the announcement renderer is back')
+if (/h\(NewsPanel/.test(fork)) throw new Error('a page still renders the announcement panel')
+// What was on those pages around it has to be intact: the EAC page keeps its
+// sign-in and its roster, the gateway keeps egress, preferences and upgrades.
+for (const keep of ["h(EacAuth, { t, auth: eacAuth, eacLogin })", 'h(Roster, { summary: data, t, onBench',
+  'h(Egress, { settings: data.settings', 'h(Preferences, { summary: data', 'h(UpgradePanel, { t, settings: data.settings']) {
+  if (fork.includes(keep) === false) throw new Error('the announcement removal took something else: ' + keep)
+}
+console.log('noticeboard: gone from both pages, the rest of those pages intact')
+
 // Mounting it. The owner's page loads its own data, so with effects inert it
 // sits on its own loading note — which is itself the proof that this is their
 // component: their root class, their copy, their namespace.

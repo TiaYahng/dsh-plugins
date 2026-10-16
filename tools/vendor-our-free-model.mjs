@@ -205,7 +205,67 @@ note('bundle id')
   note('EAC is the third tab; the landing page follows the first')
 }
 
-/* 11. The page is handed out instead. */
+/* 11. The announcement panel goes. Two pages carry one: EAC and 网关设置, each as
+      a section at the bottom called 「公告中心」 with 展开 / 检查新公告 buttons. It
+      reads the owner's announcement feed, which this copy does not even hold a
+      stream for any more, so the panel can only ever show its empty state — and
+      a page about models has no business carrying a noticeboard about the
+      plugin. The component goes with it, so the page stops asking for the feed
+      at all. */
+{
+  const needle = "h(Section, { title: t('section.news'), hint: t('section.newsHint') }, h(NewsPanel, { t }))"
+  const spots = lines.map((line, index) => (line.includes(needle) ? index : -1)).filter((index) => index >= 0)
+  if (spots.length !== 2) throw new Error(`the news panel is on ${spots.length} pages, expected 2`)
+  // One of the two is the last thing in its page and closes that page's own
+  // call, so its trailing parens have to stay — deleting the line outright
+  // leaves the outer call open. The other is one section among several and its
+  // whole line goes. From the back, so the earlier line numbers stay true.
+  for (const at of spots.reverse()) {
+    const tail = lines[at].slice(lines[at].indexOf(needle) + needle.length)
+    if (tail === ',') {
+      lines.splice(at, 1)
+      continue
+    }
+    if (/^\)+$/.test(tail) === false) {
+      throw new Error(`the news panel is not on a line of its own: ...${tail}`)
+    }
+    lines[at] = ' '.repeat(lines[at].search(/\S/)) + tail
+  }
+  if (lines.some((line) => line.includes('h(NewsPanel,'))) {
+    throw new Error('a news panel survived')
+  }
+
+  // The components themselves, and nothing else references them. Indentation
+  // cannot find a function's end: the bundle is one indented factory, so the
+  // closing brace sits at the same indent as the body. The end is the next
+  // declaration at that level, which must be preceded by a lone `}` and a blank
+  // line — or this has cut a function in half.
+  const dropComponent = (definition) => {
+    const at2 = indexOf(definition)
+    const indent = ' '.repeat(lines[at2].search(/\S/))
+    const declaration = new RegExp('^' + indent + '(function|const|let|var|class)\\s')
+    let end = at2 + 1
+    while (end < lines.length && declaration.test(lines[end]) === false) end += 1
+    if (end === lines.length) throw new Error(`${definition} never ends`)
+    // The closing brace is the last thing before the blank line and whatever
+    // banner comment labels the next block.
+    let brace = end - 1
+    while (/^(\s*$|\s*(\/\/|\/\*))/.test(lines[brace])) brace -= 1
+    if (lines[brace].trim() !== '}') {
+      throw new Error(`${definition} does not close before: ${lines[end].trim()}`)
+    }
+    lines.splice(at2, brace - at2 + 1)
+  }
+  dropComponent('function NewsPanel(props)')
+  // The panel was the only thing that drew one announcement; the renderer for
+  // a single announcement goes with it.
+  if (lines.some((line) => line.includes('h(NewsItem,') === false) === true) {
+    dropComponent('function NewsItem(props)')
+  }
+  note('announcement panel (its feed belongs to the owner, not to this page)')
+}
+
+/* 12. The page is handed out instead. */
 {
   const at = indexOf('exports.apply = apply')
   const indent = ' '.repeat(lines[at].search(/\S/))
