@@ -14,19 +14,13 @@ DSH Harness 的自制插件。两个：
 综合平台是一个设置页、4 个页签：用量统计 / 归档历史 / 记忆系统 / FreeModel。
 
 前三页用本插件自己的 `/dsh-desktop/*` 路由。第四页**就是 `dsh-our-free-model` 自己的页面**：
-它的 `client.js` 被内嵌进来，只改了七处（见 `tools/vendor-our-free-model.mjs`），其中一处是
-从它的页签列表里删掉「免费模型」。所以它那 9 个页面（EAC 模型 / 白嫖模型接入 / 聚合渠道 /
-省 Token / 路由 / 数据看板 / 运行日志 / 网关设置）的行为与原版一致，也跟得上它升级。
+它的 `client.js` 被内嵌进来，只改了十二处（清单在 `tools/vendor-our-free-model.mjs` 的文件头，
+每处都写了为什么），其中一处是从它的页签列表里删掉「免费模型」、一处是去掉它自己的标题行与
+「公告中心」面板。所以它那 8 个页面（白嫖模型接入 / 聚合渠道 / EAC 模型 / 省 Token / 路由 /
+数据看板 / 运行日志 / 网关设置）的行为与原版一致，跟得上它升级。
 
 **它没装或没加载时，FreeModel 页签显示一句说明**，其余三个页签照常。
-数据、凭据、存储全在它那边，本插件不持有。
-
-要更新这份内嵌副本：先升级 profile 里的 `dsh-our-free-model`，再跑
-
-```powershell
-node tools\vendor-our-free-model.mjs
-```
-**装了 `dsh-our-free-model` 才有数据**，否则显示一句安装提示。
+数据、凭据、存储全在它那边，本插件不持有。要跟着它升级内嵌副本，见下面的「更新」。
 
 ## 本地编码 MCP（`dsh-localcoding-mcp`）
 
@@ -57,14 +51,34 @@ node tools\vendor-our-free-model.mjs
 
 ## 安装
 
-装到 `%APPDATA%\dsh-desktop\harness\profiles\web`：
+前置：**DSH Desktop 至少启动过一次**（profile 的 `package.json` 由它生成），PATH 上有 `pnpm`
+（`corepack enable pnpm` 或 `npm i -g pnpm`）。FreeModel 页签另需 `dsh-our-free-model`（可选）。
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1
+git clone https://github.com/TiaYahng/dsh-plugins.git
+cd dsh-plugins
+powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-desktop-platform
 ```
 
-**装到当前在跑的那套（`E:\ai\DeepSeek Harness`，harness home `~\.dsh`）不要用这个脚本**，
-它的第 3 步 pnpm 会把 profile 的 `node_modules` 弄坏。手动三步即可：
+重启 DSH Desktop，插件管理里出现「综合平台」即可。脚本做四件事：把插件复制进
+`%APPDATA%\dsh-desktop\harness\profiles\web\plugins`、在 profile 的 `package.json` 里注册
+`file:` 依赖与 `dsh.profile.bundles`、删掉 `node_modules` 里的旧拷贝再 `pnpm install --force`
+（pnpm 对 `file:` 依赖是实体拷贝而不是链接，不删就还在跑旧代码）、最后确认
+`cordis.patch.yml` 进了 `node_modules`。
+
+只想要「综合平台」就带 `-Plugin dsh-desktop-platform`。不带这个参数会装上仓库里的两个插件，
+而 `dsh-localcoding-mcp` 需要本机有编译好的 `LocalCodingMCP.exe`（仓库里没有），缺它跑起来是坏的。
+其他参数：`-DshHome` / `-Profile` 换目标，`-SkipPnpm` 只复制与注册、不装依赖。
+
+装完用这两条路由自检（宿主在跑时返回 200 即已激活）：
+
+```
+/dsh-desktop/usage-stats/summary   综合平台 › 用量统计
+/dsh-desktop/shell/archive.list    综合平台 › 归档历史
+```
+
+**用 DeepSeek Harness（harness home `~\.dsh`）不要用这个脚本**，它的第 3 步 pnpm 会把
+profile 的 `node_modules` 弄坏。手动三步：
 
 ```powershell
 $P = "$env:USERPROFILE\.dsh\profiles\desktop"
@@ -74,6 +88,26 @@ Copy-Item -Recurse -Force "$P\plugins\dsh-localcoding-mcp" "$P\node_modules\dsh-
 `package.json` 里要有 `dependencies` 的 `file:` 条目与 `dsh.profile.bundles` 的行，
 然后在插件管理里把该 bundle 关一次再开一次，即刻生效、不用重启。
 **改完服务端代码仍需重启应用**（Node 的 ESM 模块缓存不随开关插件清除）。
+
+## 更新
+
+```powershell
+cd dsh-plugins
+git pull
+powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-desktop-platform
+```
+
+然后**重启 DSH Desktop**。前端（`client.js`）改动本可以靠插件管理里关一次开一次热加载，
+但服务端是 Node 的 ESM，模块缓存不随开关清除——不重启就还在跑旧的服务端代码，
+而前端已经变了，两边对不上。
+
+内嵌的那份原版副本要跟着 `dsh-our-free-model` 升级时：先在 profile 里升级那个插件，再跑
+
+```powershell
+node tools\vendor-our-free-model.mjs
+```
+
+重新生成副本（十二处改动都记在 `tools/vendor-our-free-model.mjs` 里），然后跑自检、再重装本插件。
 
 ## 环境
 

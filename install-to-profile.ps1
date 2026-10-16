@@ -21,13 +21,27 @@
 .PARAMETER Profile
     profile 名，默认 web。
 
+.PARAMETER Plugin
+    只装/更新这几个插件，默认本目录下全部。别人克隆这个仓库时通常只需要
+    dsh-desktop-platform：另一个（dsh-localcoding-mcp）要本机有编译好的
+    LocalCodingMCP.exe，仓库里没有，缺它跑起来是坏的。
+
+.PARAMETER SkipPnpm
+    只做复制与注册，不跑 pnpm install。用来在没装 pnpm 的机器上先看清单；
+    少了这一步 node_modules 里不会刷新，运行时会加载旧代码。
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1
+
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-desktop-platform
 #>
 [CmdletBinding()]
 param(
     [string]$DshHome = "$env:APPDATA\dsh-desktop\harness",
-    [string]$Profile = 'web'
+    [string]$Profile = 'web',
+    [string[]]$Plugin = @(),
+    [switch]$SkipPnpm
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,10 +55,18 @@ if (-not (Test-Path $manifestFile)) {
     throw "找不到 profile manifest: $manifestFile（DSH Desktop 启动过一次才会有）"
 }
 
-$names = Get-ChildItem $sourceRoot -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'package.json') } |
+$all = Get-ChildItem $sourceRoot -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'package.json') } |
     Select-Object -ExpandProperty Name
-if (-not $names) {
+if (-not $all) {
     throw "$sourceRoot 下没有可安装的插件目录"
+}
+
+# 只装其中一部分时，另一部分**保持原样**：它们同样是本仓库的插件，但这次没让人
+# 装它们，脚本就不该替人做决定把它们从 profile 里摘掉。
+$names = if ($Plugin) { $Plugin } else { $all }
+$unknown = @($names | Where-Object { $all -notcontains $_ })
+if ($unknown) {
+    throw "本仓库没有这些插件: $($unknown -join ', ')（可选: $($all -join ', ')）"
 }
 
 Write-Host "目标 profile: $profileDir"
@@ -69,10 +91,15 @@ if (-not $manifest.dsh.profile) { $manifest.dsh | Add-Member -NotePropertyName p
 if (-not $manifest.dsh.profile.bundles) { $manifest.dsh.profile | Add-Member -NotePropertyName bundles -NotePropertyValue @() }
 
 # 2a) 摘除已经改名 / 合并掉的插件。只认 file: 依赖（那才是本脚本装的），市场装的
-#     第三方插件一律不碰。漏了这一步，旧插件会留在 profile 的 bundles 里继续挂载，
-#     侧边栏就会多出几个没人维护的入口。
+#     第三方插件一律不碰。这次没让装的同仓库插件也不碰 —— 判据是「名字在本仓库里
+#     已经不存在」，而不是「这次没被选中」。
 $stale = @($manifest.dependencies.PSObject.Properties |
-    Where-Object { $_.Value -is [string] -and $_.Value.StartsWith('file:') -and $names -notcontains $_.Name })
+    Where-Object {
+        $_.Value -is [string] -and
+        $_.Value.StartsWith('file:') -and
+        $all -notcontains $_.Name -and
+        $names -notcontains $_.Name
+    })
 foreach ($property in $stale) {
     $manifest.dependencies.PSObject.Properties.Remove($property.Name)
     $manifest.dsh.profile.bundles = @($manifest.dsh.profile.bundles | Where-Object { $_ -ne $property.Name })
@@ -121,14 +148,24 @@ if ($staleInstalls.Count -gt 0) { Write-Host "  已清除旧拷贝: $($staleInst
 $shimDir = Join-Path $DshHome '.desktop-bin'
 if (Test-Path $shimDir) { $env:PATH = "$shimDir;$env:PATH" }
 
-Push-Location $profileDir
-try {
+if ($SkipPnpm) {
     Write-Host ''
-    Write-Host '运行 pnpm install --force ...'
-    pnpm install --workspace-root --force
-    if ($LASTEXITCODE -ne 0) { throw "pnpm 退出码 $LASTEXITCODE" }
-} finally {
-    Pop-Location
+    Write-Warning '-SkipPnpm：node_modules 里不会刷新。此时宿主仍在加载旧代码，别把这当成装好了。'
+} else {
+    # 别人机器上没有 pnpm 是常态，而 pnpm 缺失的报错（command not found）不会告诉
+    # 人该怎么办，所以在这里说清楚。
+    if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
+        throw "找不到 pnpm。宿主用 pnpm 装 profile 依赖，没有它装不了。装法：corepack enable pnpm，或 npm i -g pnpm；也可以先加 -SkipPnpm 只看清单。"
+    }
+    Push-Location $profileDir
+    try {
+        Write-Host ''
+        Write-Host '运行 pnpm install --force ...'
+        pnpm install --workspace-root --force
+        if ($LASTEXITCODE -ne 0) { throw "pnpm 退出码 $LASTEXITCODE" }
+    } finally {
+        Pop-Location
+    }
 }
 
 # 4) 自检：确认 patch 文件真的进了 node_modules，否则运行时会报 overlay ENOENT。
