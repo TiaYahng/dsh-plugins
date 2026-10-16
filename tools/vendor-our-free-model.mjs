@@ -125,7 +125,87 @@ note('bundle id')
   note('dictionary registration is tolerant of the owner being installed')
 }
 
-/* 7. The page is handed out instead. */
+/* 8. The page's own title row goes. It is the owner's name and mark, drawn
+      above their tabs: right while their page was the page, wrong the moment the
+      page became one tab inside 「综合平台」 — it is a second application
+      announcing itself in the middle of this one. The star button shares that
+      row, so it moves down onto the tab row rather than being thrown away: it
+      is a link out, not branding. */
+{
+  const from = indexOf("className: 'ofm_navbrand'")
+  const to = indexOf("t('title'))", from)
+  if (lines[from].includes("h('span', { className: 'ofm_navbrand'") === false) {
+    throw new Error('the title row does not start where I expected')
+  }
+  lines.splice(from, to - from + 1,
+    '        // Vendored: the title row is gone. The platform owns the name of this page,',
+    '        // and the owner\'s own mark above it read as a second application.')
+  note('title row (the tabs are the whole bar now)')
+}
+
+/* 9. With the row gone the bar is one line: the tabs take the wide column and
+      the star sits to their right. Left alone, the star would fall to a second
+      row under the tabs, because the grid places it after a full-width item.
+      The three rules that styled the removed row go with it — nothing draws
+      those class names any more. */
+{
+  const at = indexOf('.ofm_tabs{position:relative;')
+  lines[at] = lines[at].replace('grid-column:1 / -1;', 'grid-column:1;grid-row:1;')
+  const star = indexOf('.ofm_starbtn{')
+  lines[star] = lines[star].replace('{', '{grid-column:2;grid-row:1;')
+  const dead = indexOf('.ofm_navbrand{')
+  const last = indexOf('.ofm_navmark svg{', dead)
+  lines.splice(dead, last - dead + 1)
+  // The mark's own overrides, and the artwork itself: a 128px JPEG carried as
+  // base64 in the bundle, referenced once — by the row that is no longer drawn.
+  // The rule that also styles the channel logos is left alone; it is theirs.
+  for (const selector of ['.ofm_root .ofm_navmark{', '.ofm_root .ofm_navmark svg{']) {
+    const at2 = indexOf(selector)
+    let end = at2
+    while (lines[end].includes('}') === false) end += 1
+    lines.splice(at2, end - at2 + 1)
+  }
+  const icon = indexOf('const BRAND_ICON =')
+  const artwork = lines[icon].length
+  lines.splice(icon, 1)
+  console.log(`  (dropped ${(artwork / 1024).toFixed(0)} KB of brand artwork nobody draws)`)
+  note('the star sits beside the tabs, not under them')
+}
+
+/* 10. EAC is the third tab. It was first, which made a lane the user has to sign
+       into the first thing they see. `TABS` (what may be remembered) and the
+       rendered list are moved together so the two cannot disagree, and the
+       landing page follows the first tab: the old default named the removed
+       page, so a first visit showed its content with no pill lit. */
+{
+  const at = indexOf('const TABS = [')
+  const order = ['channels', 'aggregate', 'eac', 'saver', 'routing', 'ledger', 'logs', 'gateway']
+  const current = [...lines[at].matchAll(/'([a-z]+)'/g)].map((match) => match[1])
+  if (current.length !== order.length || current.includes('eac') === false) {
+    throw new Error(`unexpected page list: ${current.join(', ')}`)
+  }
+  // The quotes are part of the text being matched, not part of the ids.
+  const quoted = (ids) => ids.map((id) => `'${id}'`).join(', ')
+  if (lines[at].includes(quoted(current)) === false) {
+    throw new Error(`the page list does not read as expected: ${lines[at].trim()}`)
+  }
+  lines[at] = lines[at].replace(quoted(current), quoted(order))
+
+  const rendered = indexOf('const tabs = [')
+  const entry = lines[rendered + 1]
+  if (entry.includes("'eac'") === false) throw new Error('EAC is not the first rendered tab')
+  lines.splice(rendered + 1, 1)
+  // Third, counted from the first tab that is left.
+  lines.splice(rendered + 3, 0, entry)
+
+  for (const fallback of ['? saved : \'free\'', 'catch { return \'free\' }']) {
+    const at2 = indexOf(fallback)
+    lines[at2] = lines[at2].replace(fallback, fallback.replace("'free'", 'TABS[0]'))
+  }
+  note('EAC is the third tab; the landing page follows the first')
+}
+
+/* 11. The page is handed out instead. */
 {
   const at = indexOf('exports.apply = apply')
   const indent = ' '.repeat(lines[at].search(/\S/))

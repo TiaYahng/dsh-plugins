@@ -336,6 +336,30 @@ for (const name of ['FreePage', 'ChannelsPage', 'AggregatePage', 'SaverPage', 'R
 }
 console.log('vendor: ' + (fork.length / 1024).toFixed(0) + ' KB, removed page gone, nine pages kept')
 
+// The bar is one line: the tabs, and the star beside them. The owner's own name
+// and mark used to sit above the tabs, which made this page read as a second
+// application inside the platform's own page.
+if (fork.includes("className: 'ofm_navbrand'")) throw new Error('the title row is back')
+if (fork.includes('const BRAND_ICON =')) throw new Error('the brand artwork is back, referenced by nothing')
+if (/\.ofm_tabs\{[^}]*grid-column:1 \/ -1/.test(fork)) throw new Error('the tabs still span the bar; the star would drop to a second row')
+if (fork.includes('.ofm_starbtn{grid-column:2;grid-row:1;') === false) {
+  throw new Error('the star is not on the tab row')
+}
+
+// EAC is the third tab. Two lists have to agree about that: the one the page
+// may remember and the one it draws. They drifting apart is how a pill ends up
+// unlit while its page is on screen.
+const remembered = fork.match(/const TABS = \[([^\]]*)\]/)[1].match(/'([a-z]+)'/g).map((id) => id.slice(1, -1))
+const drawnBody = fork.match(/const tabs = \[([\s\S]*?)\n\s*\]/)[1]
+const drawn = drawnBody.match(/\['([a-z]+)'/g).map((id) => id.slice(2, -1))
+if (JSON.stringify(remembered) !== JSON.stringify(drawn)) {
+  throw new Error(`the remembered and drawn tab orders disagree: ${remembered.join(',')} vs ${drawn.join(',')}`)
+}
+if (drawn.indexOf('eac') !== 2) throw new Error(`EAC is at ${drawn.indexOf('eac') + 1}, expected 3: ${drawn.join(', ')}`)
+if (fork.includes("? saved : 'free'")) throw new Error('the landing page still names the removed page')
+if (fork.includes('catch { return \'free\' }')) throw new Error('the fallback still names the removed page')
+console.log('bar: one line, tabs and star · EAC third, both lists agree, landing is the first tab')
+
 // Mounting it. The owner's page loads its own data, so with effects inert it
 // sits on its own loading note — which is itself the proof that this is their
 // component: their root class, their copy, their namespace.
