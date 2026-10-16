@@ -138,6 +138,13 @@ function createController (ctx, config, holder) {
       const codex = await probeCodex(codexPathOf(), { timeoutMs: 8_000 })
       const tunnel = holder.tunnel
       const browser = holder.browser
+      // One `codex mcp list` feeds both facts the page needs: whether our row exists
+      // at all, and whether it still points at the port we answer on. The name alone
+      // is not enough — a stale row from an earlier session reads as "registered"
+      // while Codex calls a port nothing is listening on.
+      const codexServers = await listCodexMcpServers(codexPathOf())
+      const codexRow = codexServers.find((entry) => entry.name === CODEX_SERVER_NAME)
+      const codexUrl = live?.process.mcpUrl
       return {
         settings: {
           workspaceRoot: config.workspaceRoot,
@@ -169,8 +176,12 @@ function createController (ctx, config, holder) {
           // configured relay answers, and an unreachable one looks like a hang.
           endpoint: await probeEndpoint(codex?.provider),
           mcpServerName: CODEX_SERVER_NAME,
-          mcpUrl: live?.process.mcpUrl,
-          servers: await listCodexMcpServers(codexPathOf())
+          mcpUrl: codexUrl,
+          registered: codexRow !== undefined,
+          // A row pointing somewhere else is the failure a boolean hides.
+          registeredUrl: codexRow?.url,
+          matchesOurEndpoint: codexRow !== undefined && codexUrl !== undefined && codexRow.url === codexUrl,
+          servers: codexServers
         },
         // The GPT-web direction. `enabled:false` is reported rather than hidden so
         // the page can explain why no account is listed instead of showing nothing.

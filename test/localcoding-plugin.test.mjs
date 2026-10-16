@@ -189,6 +189,23 @@ await check('the status payload carries the sections the page renders', async ()
   assert.equal(body.browser.enabled, true)
 })
 
+await check('the codex section reports registration as a real three-state fact', async () => {
+  const { body } = await call('status')
+  const codex = body.codex
+  // The page renders a tag straight off these three, so all of them have to exist
+  // as booleans. A missing `registered` renders "not registered" forever, even
+  // when the row is sitting in config.toml.
+  for (const key of ['registered', 'matchesOurEndpoint']) {
+    assert.equal(typeof codex[key], 'boolean', `codex.${key} must be a boolean, got ${typeof codex[key]}`)
+  }
+  // Matching implies registered, never the reverse.
+  if (codex.matchesOurEndpoint) assert.equal(codex.registered, true)
+  if (!codex.registered) assert.equal(codex.registeredUrl, undefined)
+  // Our own name must be the one the status compares against.
+  assert.equal(codex.mcpServerName, 'dsh-localcoding')
+  assert.ok(Array.isArray(codex.servers), 'codex.servers must be a list')
+})
+
 await check('tunnel actions require an id instead of failing obscurely', async () => {
   const missingId = await call('tunnel/probe', { query: {} })
   assert.equal(missingId.status, 500)

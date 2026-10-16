@@ -1,11 +1,12 @@
 /* ══ vendored: dsh-our-free-model, browser half ══════════════════════════════
-   Taken from the owner's own client.js and patched in 7 places:
+   Taken from the owner's own client.js and patched in 8 places:
      · bundle id
      · remembered pages
      · nav entry
      · page switch default
      · slot registrations
      · announcement stream (the owner keeps its own)
+     · dictionary registration is tolerant of the owner being installed
      · component export
    Regenerate with:  node tools/vendor-our-free-model.mjs
    Edit the fork, not the original: the next run reads the original wholesale. */
@@ -5969,7 +5970,16 @@ window.__ModuleLoader__.load({
 
     function apply(ctx) {
       const t = ctx.locale.bind(NS)
-      ctx.effect(() => ctx.locale.register(NS, { zh: DICT.zh, en: DICT.en }), 'our-free-model: dictionaries')
+      ctx.effect(() => {
+        try {
+          ctx.locale.register(NS, { zh: DICT.zh, en: DICT.en })
+        } catch (error) {
+          // The owner's own plugin got here first. Its dictionary is the
+          // same dictionary, so losing the race costs nothing; anything
+          // else is a real failure and must surface.
+          if (/already has locale/.test(String(error?.message ?? error)) === false) throw error
+        }
+      }, 'our-free-model: dictionaries')
 
       ctx.effect(() => {
         const style = document.createElement('style')

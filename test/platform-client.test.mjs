@@ -109,6 +109,11 @@ const plugin = globalThis.__registration.factory((spec) => {
 })
 
 const registered = { sections: [], dictionaries: [], forms: [] }
+// The owner's own plugin registers this namespace before we load, and the host
+// refuses a second registration for it. The harness has to be standing where
+// the real machine stands, or it passes a bundle that cannot boot.
+const ownerDictionary = { ns: 'settings.ourFreeModel', zh: { nav: 'Our Free Model' }, en: { nav: 'Our Free Model' } }
+registered.dictionaries.push(ownerDictionary)
 const ledger = {
   inject (_name, run) { const dispose = run(); return () => { dispose?.() } },
   register (entry, component) { registered.sections.push({ entry, component }); return () => {} },
@@ -123,7 +128,16 @@ const ledgerListeners = new Set()
 const ctx = {
   slots: ledger,
   locale: {
-    register: (ns, dict) => registered.dictionaries.push({ ns, dict }),
+    register: (ns, dict) => {
+      for (const language of Object.keys(dict)) {
+        if (registered.dictionaries.some((entry) => entry.ns === ns && entry[language] !== undefined)) {
+          const clash = new Error(`locale namespace "${ns}" already has locale "${language}"`)
+          clash.code = 'duplicate-locale'
+          throw clash
+        }
+      }
+      registered.dictionaries.push({ ns, ...dict })
+    },
     bind: (ns) => (key) => `${ns}/${key}`
   },
   configForms: { get: (id) => { registered.forms.push(id); return { subscribe () {}, getSnapshot: () => ({}), mutate: async () => true } } },
@@ -136,7 +150,16 @@ plugin.apply(ctx)
 // Two dictionaries, and both are wanted: ours for the platform's three tabs,
 // the vendored page's for the copy the owner wrote. A collision is the failure.
 if (registered.dictionaries.length !== 2) {
-  throw new Error(`expected 2 dictionaries, got ${registered.dictionaries.length}`)
+  throw new Error(`expected our dictionary beside the owner's, got ${registered.dictionaries.length}`)
+}
+const ownerRegistrations = registered.dictionaries.filter((entry) => entry.ns === 'settings.ourFreeModel')
+if (ownerRegistrations.length !== 1) {
+  throw new Error(`the owner namespace was registered ${ownerRegistrations.length} times; the host throws on the second`)
+}
+// Yielding is the point: the copy's dictionary is the same content, so the
+// owner's registration is left standing and the second one is dropped.
+if (ownerRegistrations[0] !== ownerDictionary) {
+  throw new Error('the vendored copy overwrote the owner dictionary instead of yielding to it')
 }
 const namespaces = registered.dictionaries.map((entry) => entry.ns)
 if (new Set(namespaces).size !== namespaces.length) {

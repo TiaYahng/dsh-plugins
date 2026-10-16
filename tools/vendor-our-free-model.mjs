@@ -99,6 +99,32 @@ note('bundle id')
   note('announcement stream (the owner keeps its own)')
 }
 
+/* 7. The dictionary registration is tolerant of the owner being present.
+      Their own plugin registers `settings.ourFreeModel` too, and the host
+      refuses a second registration for one namespace: the duplicate throws in
+      the renderer, the client bundle fails to load, and the profile is declared
+      broken — the app stops opening. The copy therefore registers only when
+      nobody else has, which is also what makes it work on its own. */
+{
+  const at = indexOf('ctx.locale.register(NS,')
+  if (lines[at].includes('try') === false) {
+    lines[at] = lines[at].replace(
+      "ctx.effect(() => ctx.locale.register(NS, { zh: DICT.zh, en: DICT.en }), 'our-free-model: dictionaries')",
+      "ctx.effect(() => {\n" +
+      '        try {\n' +
+      "          ctx.locale.register(NS, { zh: DICT.zh, en: DICT.en })\n" +
+      '        } catch (error) {\n' +
+      "          // The owner's own plugin got here first. Its dictionary is the\n" +
+      '          // same dictionary, so losing the race costs nothing; anything\n' +
+      '          // else is a real failure and must surface.\n' +
+      "          if (/already has locale/.test(String(error?.message ?? error)) === false) throw error\n" +
+      '        }\n' +
+      "      }, 'our-free-model: dictionaries')"
+    )
+  }
+  note('dictionary registration is tolerant of the owner being installed')
+}
+
 /* 7. The page is handed out instead. */
 {
   const at = indexOf('exports.apply = apply')

@@ -38,6 +38,9 @@ window.__ModuleLoader__.load({
       'codex': 'Codex 反向委派',
       'codexRegistered': 'Codex 已可回调本机 /mcp',
       'codexNotRegistered': '尚未向 Codex 注册',
+      'codexRegisteredStale': '已注册，但指向的端口不对',
+      'codexStaleHint': 'Codex 里的那条记录指向的端口不是本机现在应答的端口，Codex 会调到一个没人监听的端口。点「注册到 Codex」覆盖它。',
+      'codexStaleDetail': '（原 {was} → 现在 {now}）',
       'codexLoggedOut': 'Codex CLI 未登录，请先在终端执行 codex login，否则反向委派会失败。',
       'codexEndpoint': '模型入口',
       'codexEndpointOk': '模型入口可达',
@@ -119,6 +122,9 @@ window.__ModuleLoader__.load({
       'codex': 'Codex reverse delegation',
       'codexRegistered': 'Codex can call back into the local /mcp endpoint',
       'codexNotRegistered': 'not registered with Codex yet',
+      'codexRegisteredStale': 'registered, but pointing at the wrong port',
+      'codexStaleHint': 'The row in Codex points at a port this machine is no longer answering on, so Codex calls a dead endpoint. Press "Register with Codex" to overwrite it.',
+      'codexStaleDetail': '(was {was} → now {now})',
       'codexLoggedOut': 'The Codex CLI is not logged in. Run `codex login` first, otherwise reverse delegation fails.',
       'codexEndpoint': 'model endpoint',
       'codexEndpointOk': 'model endpoint reachable',
@@ -443,9 +449,16 @@ window.__ModuleLoader__.load({
           ]
         },
           React.createElement('div', { className: 'dshLcmBar' },
+            // Three states, not two. A row left over from an earlier session used
+            // to read as "registered" while Codex called a dead port, so the port
+            // match is reported separately instead of being folded into a boolean.
             React.createElement('span', {
-              className: codex?.registered ? 'dshLcmTag dshLcmOk' : 'dshLcmTag'
-            }, codex?.registered ? t('codexRegistered') : t('codexNotRegistered')),
+              className: codex?.matchesOurEndpoint ? 'dshLcmTag dshLcmOk'
+                : codex?.registered ? 'dshLcmTag dshLcmBad'
+                  : 'dshLcmTag'
+            }, codex?.matchesOurEndpoint
+              ? t('codexRegistered')
+              : codex?.registered ? t('codexRegisteredStale') : t('codexNotRegistered')),
             codex?.loggedIn === false
               ? React.createElement('span', { className: 'dshLcmTag dshLcmBad' }, t('codexLoggedOut'))
               : null,
@@ -473,6 +486,14 @@ window.__ModuleLoader__.load({
           codex?.endpoint?.checked && codex.endpoint.reachable === false
             ? React.createElement('p', { className: 'dshLcmNote dshLcmNoteWarn' },
               t('codexEndpointHint'), ' ', codex.endpoint.error ?? '')
+            : null,
+          codex?.registered && codex?.matchesOurEndpoint === false
+            ? React.createElement('p', { className: 'dshLcmNote dshLcmNoteWarn' },
+              t('codexStaleHint'), ' ',
+              t('codexStaleDetail')
+                .replace('{was}', codex.registeredUrl ?? '—')
+                .replace('{now}', codex.mcpUrl ?? '—'),
+              ' ')
             : null,
           codex?.provider?.relay
             ? React.createElement('p', { className: 'dshLcmNote' }, t('codexRelayNote'))
