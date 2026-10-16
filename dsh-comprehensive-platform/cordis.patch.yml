@@ -1,8 +1,8 @@
-# Profile bundle mount for dsh-desktop-platform.
+# Profile bundle mount for dsh-comprehensive-platform.
 #
 # This copy is installed as a profile bundle because the DSH Desktop build
 # carries no dsh-desktop-custom-plugins host plugin. The row mirrors the id
 # the Desktop host patch uses, because the settings section is keyed by it.
 - insert:
-    - id: dsh-desktop-platform
-      name: dsh-desktop-platform
+    - id: dsh-comprehensive-platform
+      name: dsh-comprehensive-platform

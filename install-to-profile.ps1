@@ -23,7 +23,7 @@
 
 .PARAMETER Plugin
     只装/更新这几个插件，默认本目录下全部。别人克隆这个仓库时通常只需要
-    dsh-desktop-platform：另一个（dsh-localcoding-mcp）要本机有编译好的
+    dsh-comprehensive-platform：另一个（dsh-localcoding-mcp）要本机有编译好的
     LocalCodingMCP.exe，仓库里没有，缺它跑起来是坏的。
 
 .PARAMETER SkipPnpm
@@ -34,7 +34,7 @@
     powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1
 
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-desktop-platform
+    powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-comprehensive-platform
 #>
 [CmdletBinding()]
 param(

@@ -26,7 +26,7 @@
  * Every route is loopback-only and every workspace-bound path is confined to
  * the registry's own roots. Nothing here writes to a session.
  *
- * @module dsh-desktop-platform
+ * @module dsh-comprehensive-platform
  */
 import z from '@deepseek-ai/schemastery'
 
@@ -36,7 +36,7 @@ import { registerArchiveRoutes, LIST_PATH, WORKSPACES_PATH } from './server/arch
 import { registerMemoryRoutes, MEMORY_PATH, CONVENTION_PATH, HANDOFF_PATH } from './server/memory.js'
 
 /** Stable Cordis plugin name (also the id used in the Desktop patch row). */
-export const name = 'dsh-desktop-platform'
+export const name = 'dsh-comprehensive-platform'
 
 /**
  * The stored-log reader and the workspace registry this plugin serves from.
@@ -103,6 +103,6 @@ export function apply(ctx, config) {
         table.dispose()
         cache.clear()
       }
-    }, 'dsh-desktop-platform: platform routes')
+    }, 'dsh-comprehensive-platform: platform routes')
   )
 }

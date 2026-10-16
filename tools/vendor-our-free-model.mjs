@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 /**
  * Vendor the owner's browser half into this plugin.
@@ -22,7 +23,9 @@ const source = flagAt > 0
   : path.join(process.env.APPDATA, 'dsh-desktop/harness/profiles/web/node_modules/dsh-our-free-model/client.js')
 if (!fs.existsSync(source)) throw new Error(`no such source: ${source}`)
 
-const root = 'E:/ai/dsh-plugins'
+// The repository root is where this script lives, not a path anyone typed in:
+// a machine-specific path in a script is a machine-specific path in the docs too.
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const edits = []
 let lines = fs.readFileSync(source, 'utf8').split('\n')
 
@@ -284,10 +287,10 @@ ${edits.map((why) => `     · ${why}`).join('\n')}
 `
 const forked = `${header}${lines.join('\n')}`
 
-fs.mkdirSync(`${root}/dsh-desktop-platform/vendor`, { recursive: true })
-fs.writeFileSync(`${root}/dsh-desktop-platform/vendor/our-free-model-client.js`, forked, 'utf8')
+fs.mkdirSync(`${root}/dsh-comprehensive-platform/vendor`, { recursive: true })
+fs.writeFileSync(`${root}/dsh-comprehensive-platform/vendor/our-free-model-client.js`, forked, 'utf8')
 
-const clientFile = `${root}/dsh-desktop-platform/client.js`
+const clientFile = `${root}/dsh-comprehensive-platform/client.js`
 const client = fs.readFileSync(clientFile, 'utf8')
 const begin = '    /* >>> VENDOR:BEGIN */'
 const end = '    /* <<< VENDOR:END */'

@@ -1,11 +1,12 @@
 # 长期记忆
 
+- 2026-10-16 包名改成 `dsh-comprehensive-platform`：**包身份**（client bundle id、cordis.patch 行、服务端 `name`、profile 的 dependencies/bundles）全部跟着改；**`SETTINGS_NAMESPACE` 与设置页 section id 不改**——它们是别人机器上已有数据的键，改了等于静默丢设置/丢记忆。自检给这两个键各留常量并断言它们不随包名变。
 - 2026-10-16 宿主**拒绝同一 locale 命名空间注册两次**：`locale namespace "X" already has locale "zh"` 会在渲染进程抛错 → 整个 client bundle 加载失败 → profile 判定失败 → **应用打不开**（界面上只显示市场的 404 噪音）。两个地方都要容忍：内嵌的 owner 插件自己会注册 `settings.ourFreeModel`；且 `apply` 会跑多次（热重载 / profile 变更），自己的命名空间也会撞上。
 - 2026-10-16 FreeModel 的页面**不再自己写**：原版 `client.js` 内嵌进本插件，`tools/vendor-our-free-model.mjs` 重新生成并拼进 client.js，只改七处（bundle id / 页签记忆 / 导航行 / 默认分支 / 两处 slot 注册 / 公告 EventSource / 导出组件）。走过的弯路：挂载（它的页签条删不掉某一页）→ 照接口重写（差距大，用户不接受）。
 - 2026-10-16 内嵌它的两件事必须自己做：翻译器要 `ctx.locale.bind('settings.ourFreeModel')` 且在它 `apply` 注册词典**之后**绑（否则它用自己的 key 去查本插件的词典）；`window.__ModuleLoader__` 要在求值那一下换成捕获用的假对象，否则会注册出第二个同名 bundle。
 - 2026-10-16 原版自己的 CSS 用了两个宿主没定义的 token（`--dsw-alias-state-warning-primary`、`--dsw-alias-label-on-accent`），在 color-mix() 里整条声明作废，那两处颜色今天就是不显示的；自检只审我们自己的样式表，遇到它报告不报错。
 - 2026-10-15 客户端 `exports.inject` 是**服务声明**，不是给组件传参的清单：宿主只在声明过的服务上放行，访问未声明的 `ctx.locale` 会在渲染进程抛 `cannot get property "locale" without inject`，整个 client bundle 加载失败、市场弹出「恢复/卸载此插件」。清空过它一次，代价是应用打不开。
-- 2026-10-14 本仓库从 2 插件 3 页面合并为 1 插件 1 页面（`dsh-desktop-platform`，导航名「综合平台」），3 个页签：用量统计 / 归档历史 / 记忆系统。
+- 2026-10-14 本仓库从 2 插件 3 页面合并为 1 插件 1 页面（现名 `dsh-comprehensive-platform`，导航名「综合平台」），3 个页签：用量统计 / 归档历史 / 记忆系统。
 - 2026-10-14 设置导航顺序：宿主内置占 -10..20（账号/通用/模型/插件/Agent 预设），第三方 IM机器人 占 21，自制页用 `order: 900` 钉在最后。
 - 2026-10-14 pnpm 对 `file:` 依赖会复用 store 旧副本，版本号不变时 `pnpm install --force` 也不重新拷贝；`install-to-profile.ps1` 改为安装前先删 `node_modules\<name>`。
 - 2026-10-14 DSH 会话日志是 append-only（契约原文「已提交事件绝不重写」「无删除或保留接口」），没有原地撤回/改写历史的原语，只能 fork。
@@ -13,7 +14,6 @@
 - 2026-10-14 归档页的删除（单个 + 批量）就是走上面这个宿主 RPC，自检见 `test/archive-delete.test.mjs`（迷你 React 挂载后真点按钮）。
 - 2026-10-14 试过按 fork 语义做「撤回重发」，用户反馈不好用，已整块删除；再有人提类似需求先问是否接受分支语义。
 - 2026-10-14 客户端模块加载器（dsh-client-modules）的 `require` 只认平台 seed 名与已注册模块 id，**没有同步相对导入**；client.js 想拆文件只能用 `require.async('./client.x.js')` 异步 chunk。
-- 2026-10-14 查宿主源码要读 `E:\ai\DSH Desktop\resources\app.asar`（自写脚本按 asar 头部 JSON 读文件即可，不用解包）；`%APPDATA%\dsh-desktop\harness\profiles\node_modules\@deepseek-ai\*` 是指向已不存在路径的失效 junction。
 - 2026-10-14 宿主 client 服务名（写进插件 `inject` 数组的就是这些字符串）：`slots`、`locale`、`configForms`、`sessions`、`uiWorkspace`、`remote`、`remote.session`；外部服务用 `ctx.inject([...], cb)` 软依赖，缺了只是功能不出现，不会拖垮整个插件。
 - 2026-10-14 改完 `dsh-plugins` 下的代码必须重跑 `install-to-profile.ps1` 再重启应用（该脚本只对 `%APPDATA%` 那套 profile 有效；在跑的那套见 2026-10-16 的两条）；服务端可用 loopback 路由自检，客户端只能靠用户看界面。
 - 2026-10-15 `ctx.slots.entries(key)` 返回的 entry 自带 `component`，可以跨插件把别人注册的设置页直接渲染进自己的页面（本仓库用它把 dsh-our-free-model 的整页挂进综合平台）；账本变化用 `getVersion` + `subscribe` 观察。
@@ -25,18 +25,11 @@
 - 2026-10-15 FreeModel 的看板与运行日志不需要 channel pack：`GET /api/our-free-model/stats` 一个接口就够（`grand`/`models`/`days`/`savings` + 最近 200 条 `samples`，含 `truncated`/`noUsage` 标记）。
 - 2026-10-16 账本有两个，不能混：`/api/our-free-model/stats` 只数插件自己的免费线路；渠道账号的 token 在 pack 的 `usage.tokenLedger`（进程内 500 条）和 `usage.tokenLedgerHistory`（落盘 90 天），形状是 channel→provider→account→model。
 - 2026-10-15 README 只留用途（页签表 + 安装一行），实现与踩坑移到 `docs/ENGINEERING.md`。
-- 2026-10-15 仓库已推到 `https://github.com/TiaYahng/dsh-plugins`（公开，主分支 `main`，本地 master 已改名）。本机没有 `gh` CLI，但 Windows 凭据管理器里存着 github.com 的 40 位 token：`git credential fill` 能取到，可直接用它调 GitHub API（建仓库、设描述）。
-- 2026-10-15 全局 git 配置里第二条 `credential.helper`（`!".../PortableGit/.../git-credential-manager.exe"`）指向不存在的文件，每次 push 会报一次 `store: ... No such file or directory`——是噪音，推送本身照样成功。
-- 2026-10-16 跑着的应用是 `E:\ai\DeepSeek Harness\DeepSeek Harness.exe`，harness home 为 `C:\Users\HP-XXX\.dsh`，profile 为 `~/.dsh\profiles\desktop`；`%APPDATA%\dsh-desktop\harness\profiles\web` 是另一套遗留的 DSH Desktop profile，GUI 端口 19387 两者共用但只认前者。
-- 2026-10-16 **不要在 `~/.dsh\profiles\desktop` 里跑 pnpm**：pnpm 11.15.1 会在 `Packages: +N -2` 后报 `Worker pnpm#8 exited with code 1`（不给出真实原因），并把两个 `file:` 插件从 `node_modules` 删掉、`.pnpm` 虚拟store 清空。装插件改用：把 `plugins\<name>` 复制到 `node_modules\<name>`，再 `plugin_manager set_bundle enabled=false` → `enabled=true`，立刻生效且不重启。
 - 2026-10-16 `plugin_manager set_bundle` 的 disable→enable 会重载插件（`application:"applied"`），但 **Node 的 ESM 模块缓存不清**，改过的 server 代码要重启应用才生效；只改前端 client 时刷新页面即可。
 - 2026-10-16 宿主 `tools.register` 的 JSON Schema 只支持子集 `type/oneOf/properties/required/additionalProperties/items/enum/const` + 注解 `description/title/default/examples`，多写一个 key 就 `unsupported JSON schema: ... is not a supported keyword`；`additionalProperties` 必须是 boolean，`required` 的每一项必须出现在 `properties` 里，保留名 `run_code`。
 - 2026-10-16 宿主 `execute()` 返回的是**裸值**：宿主自己做 `validateJsonSchemaValue(tool.output.schema, value)` 再调 `output.render(args, value)` 生成 content。所以失败要 **throw**，不要返回 `{isError:true}`——throw 会被宿主转成 `Error: <message>` 的 isError 结果。
 - 2026-10-16 MCP `tools/call` 成功时**没有 `isError` 字段**（缺失即成功），`result.content[0].text` 是需要 `JSON.parse` 的字符串；`POST /mcp` 回 `text/event-stream`，要按 SSE 解 `event: message\ndata: {...}`，会话靠响应头 `Mcp-Session-Id`，**千万别开 `GET /mcp`**（长连接永不结束，会挂住调用方）。
-- 2026-10-16 Codex CLI（`codex-cli 0.130.0-alpha.5`，`%LOCALAPPDATA%\OpenAI\Codex\bin\codex.exe`）的 MCP 注册：`codex mcp add <名> --url <URL>` 对已存在的名字是就地覆盖、退出码 0，不需要先 remove。~~未登录时 `codex exec` 静默挂起~~ 这条已被下一条推翻。
 - 2026-10-16 **不要关闭或重启 DeepSeek Harness**：用户当前就是通过这个应用在对话，重启等于把会话掐掉。服务端代码的改动只能留到用户自己下次自然启动时生效（只改 client.js 的话刷新页面就够）。
-- 2026-10-16 本机 codex 走第三方中转：`~/.codex/config.toml` 里 `model_provider="custom"`、`base_url="https://new.ruiflux.sbs"`、`wire_api="responses"`、`experimental_bearer_token`、`requires_openai_auth=false`，**没有 auth.json**。所以 `codex login status` 永远报 Not logged in —— 它只反映 OpenAI 账号登录，不反映 bearer token 是否可用，**不能拿它当就绪判据**（插件曾据此误报"未登录"）。
-- 2026-10-16 **中转站 `new.ruiflux.sbs` 当前不可达**：TCP 443 通（DNS 被 Clash fake-ip 解析到 `198.18.0.79`），代理隧道也建立成功（`CONNECT` 返回 200），但 TLS 握手对端一个字节不回，报 `schannel: failed to receive handshake`。同一代理下访问 `api.openai.com` 正常（401），所以不是代理配置问题，是该中转站挂了。
 - 2026-10-16 `codex exec` 的三个坑：① `Reading additional input from stdin...` **即使 stdin 已关闭也会照打**，不能拿它判断「卡在等输入」；② 重连/传输错误只在 `--json` 模式下作为 `{"type":"error"}` 事件打到 **stdout**，人类可读模式下什么都不输出，只表现为静默挂死；③ 它会 spawn MCP 服务器和沙箱子进程，继承的 stdout/stderr 管道被子进程握着，`child.kill()` 后 `close` 事件迟迟不来 —— 实测 20 秒超时要 105 秒才 resolve，必须到点直接 resolve 并 `taskkill /T /F`。
 - 2026-10-16 **GPT 网页方向 = 出站隧道**：`chatgpt.com` 的连接器够不到 `127.0.0.1`，唯一办法是 `mcp-accounts\tunnel-client.exe`（OpenAI 官方出站守护进程）主动连 `https://api.openai.com`。它只有 `/healthz`、`/readyz`、`/ui` 三个本地接口，`--health-listen-addr` 默认 `127.0.0.1:8080`。`/readyz` 只证明进程活着，**真正的验收是去 `chatgpt.com/#settings/Connectors` 选隧道后发一次真实工具调用**。
 - 2026-10-16 隧道账号配置在 `mcp-accounts\config\accounts.json`，`tunnel.controlPlaneKey` 是 **DPAPI 加密串**（`ProtectedData.Unprotect`，CurrentUser，无 entropy），只能在内存里解开，**绝不能进日志/响应/配置**；每个账号用独立环境变量 `LCM_CP_KEY_<ID_UPPER_SNAKE>` 传给子进程。三个账号的 `organizationId` 都是空 —— 这正是 `403 tunnel_active_organization_required` 的成因，本地任何检查都看不出来，只能在页面显式警告。

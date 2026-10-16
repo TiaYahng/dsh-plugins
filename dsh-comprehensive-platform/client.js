@@ -1,5 +1,5 @@
 /**
- * Client half of dsh-desktop-platform: one Settings section holding three tabs.
+ * Client half of dsh-comprehensive-platform: one Settings section holding three tabs.
  *
  * The three surfaces (用量统计 / 归档历史 / 记忆系统) used to be three Settings
  * entries contributed by two plugins. They are one page now, so the shell lives
@@ -12,7 +12,7 @@
  * from the host's own palette.
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-desktop-platform',
+  id: 'dsh-comprehensive-platform',
   factory: (require) => {
     const module = { exports: {} }
     const exports = module.exports
@@ -22,6 +22,8 @@ window.__ModuleLoader__.load({
     const NS = 'settings.desktopPlatform'
     // A settings section is keyed by the owning Loader entry id since 0.1.7, so
     // this has to match the plugin's `name` (and the patch row id) exactly.
+    // Deliberately the package's old name: this namespace is a key into settings
+    // already stored on people's machines. Renaming it would reset every value.
     const SETTINGS_NAMESPACE = 'dsh-desktop-platform'
     const SUMMARY_PATH = '/dsh-desktop/usage-stats/summary'
     const ARCHIVE_LIST_PATH = '/dsh-desktop/shell/archive.list'
@@ -379,9 +381,9 @@ window.__ModuleLoader__.load({
 `
 
     function installStyles() {
-      if (typeof document === 'undefined' || document.getElementById('dsh-desktop-platform-style') !== null) return
+      if (typeof document === 'undefined' || document.getElementById('dsh-comprehensive-platform-style') !== null) return
       const tag = document.createElement('style')
-      tag.id = 'dsh-desktop-platform-style'
+      tag.id = 'dsh-comprehensive-platform-style'
       tag.textContent = styles
       document.head.appendChild(tag)
     }
@@ -7360,7 +7362,7 @@ window.__ModuleLoader__.load({
         } catch (error) {
           if (/already has locale/.test(String(error?.message ?? error)) === false) throw error
         }
-      }, 'dsh-desktop-platform: copy dictionaries')
+      }, 'dsh-comprehensive-platform: copy dictionaries')
       const t = ctx.locale.bind(NS)
       // `settingsScope` was removed in 0.1.7. Its replacement is `configForms`:
       // one shared form controller per Loader entry id, backed by

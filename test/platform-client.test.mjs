@@ -7,9 +7,18 @@ import fs from 'node:fs'
 
 const source = fs.readFileSync(process.argv[2], 'utf8')
 
-/** Entry id, section id and DOM prefixes must all match the plugin package. */
-const ENTRY_ID = 'dsh-desktop-platform'
+/**
+ * Entry id and DOM prefixes follow the plugin package; the two below do not, on
+ * purpose, and each has its own constant so the next rename cannot move them by
+ * accident.
+ *
+ * SECTION_ID is the Settings page's identity — remembered tabs hang off it.
+ * CONFIG_NAMESPACE is a key into settings already stored on people's machines.
+ * Both outlive a package rename; changing either silently drops a user's state.
+ */
+const ENTRY_ID = 'dsh-comprehensive-platform'
 const SECTION_ID = 'desktop-platform'
+const CONFIG_NAMESPACE = 'dsh-desktop-platform'
 
 /**
  * Orders the host's own top-level sections occupy in the Settings nav. Ours
@@ -178,8 +187,11 @@ if (styleTags.length < 2) throw new Error(`expected both stylesheets, got ${styl
 if (registered.sections.length !== 1) {
   throw new Error(`the vendored copy registered a section of its own: ${registered.sections.length}`)
 }
-if (registered.forms.length !== 1 || registered.forms[0] !== ENTRY_ID) {
-  throw new Error(`configForms asked for ${registered.forms.join()} — expected ${ENTRY_ID}`)
+if (registered.forms.length !== 1 || registered.forms[0] !== CONFIG_NAMESPACE) {
+  throw new Error(`configForms asked for ${registered.forms.join()} — expected ${CONFIG_NAMESPACE}`)
+}
+if (source.includes(`SETTINGS_NAMESPACE = '${ENTRY_ID}'`)) {
+  throw new Error('the config namespace was renamed along with the package; stored settings would be orphaned')
 }
 if (registered.sections.length !== 1) throw new Error(`expected 1 settings section, got ${registered.sections.length}`)
 const { entry, component } = registered.sections[0]
@@ -322,7 +334,7 @@ console.log(`apply: 1 section (${entry.id}), tabs ${tabIds.length}, initial pane
 // list and its nav row no longer name the removed page, and it registers no
 // settings section of its own — this plugin owns the one in the nav.
 const fork = fs.readFileSync(
-  new URL('../dsh-desktop-platform/vendor/our-free-model-client.js', import.meta.url),
+  new URL('../dsh-comprehensive-platform/vendor/our-free-model-client.js', import.meta.url),
   'utf8'
 )
 if (/const TABS = \['free'/.test(fork)) throw new Error('the vendored page list still offers the removed page')

@@ -4,10 +4,10 @@ DSH Harness 的自制插件。两个：
 
 | 插件 | 做什么 |
 | --- | --- |
-| `dsh-desktop-platform` | 把自制功能收进设置里的一个页面，导航名「综合平台」 |
+| `dsh-comprehensive-platform` | 把自制功能收进设置里的一个页面，导航名「综合平台」 |
 | `dsh-localcoding-mcp` | 把 LocalCodingMCP 接进宿主：本地工具入表、任务出给 Codex、隧道打通网页版 ChatGPT |
 
-## 综合平台（`dsh-desktop-platform`）
+## 综合平台（`dsh-comprehensive-platform`）
 
 ### 页面
 
@@ -57,7 +57,7 @@ DSH Harness 的自制插件。两个：
 ```powershell
 git clone https://github.com/TiaYahng/dsh-plugins.git
 cd dsh-plugins
-powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-desktop-platform
+powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-comprehensive-platform
 ```
 
 重启 DSH Desktop，插件管理里出现「综合平台」即可。脚本做四件事：把插件复制进
@@ -66,7 +66,7 @@ powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-de
 （pnpm 对 `file:` 依赖是实体拷贝而不是链接，不删就还在跑旧代码）、最后确认
 `cordis.patch.yml` 进了 `node_modules`。
 
-只想要「综合平台」就带 `-Plugin dsh-desktop-platform`。不带这个参数会装上仓库里的两个插件，
+只想要「综合平台」就带 `-Plugin dsh-comprehensive-platform`。不带这个参数会装上仓库里的两个插件，
 而 `dsh-localcoding-mcp` 需要本机有编译好的 `LocalCodingMCP.exe`（仓库里没有），缺它跑起来是坏的。
 其他参数：`-DshHome` / `-Profile` 换目标，`-SkipPnpm` 只复制与注册、不装依赖。
 
@@ -77,24 +77,42 @@ powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-de
 /dsh-desktop/shell/archive.list    综合平台 › 归档历史
 ```
 
-**用 DeepSeek Harness（harness home `~\.dsh`）不要用这个脚本**，它的第 3 步 pnpm 会把
-profile 的 `node_modules` 弄坏。手动三步：
+**换一套 harness 数据目录时不要用这个脚本**，它第 3 步的 pnpm 在那套 profile 上会把
+`node_modules` 弄坏（原因见 `docs/ENGINEERING.md`）。手动三步：
 
 ```powershell
-$P = "$env:USERPROFILE\.dsh\profiles\desktop"
-Copy-Item -Recurse -Force "$P\plugins\dsh-localcoding-mcp" "$P\node_modules\dsh-localcoding-mcp"
+# $P 指向目标 profile 目录（harness home 下的 profiles\<profile>）
+Copy-Item -Recurse -Force "$P\plugins\<插件名>" "$P\node_modules\<插件名>"
 ```
 
 `package.json` 里要有 `dependencies` 的 `file:` 条目与 `dsh.profile.bundles` 的行，
 然后在插件管理里把该 bundle 关一次再开一次，即刻生效、不用重启。
 **改完服务端代码仍需重启应用**（Node 的 ESM 模块缓存不随开关插件清除）。
 
+## 给 agent 与自动化安装
+
+宿主自带的插件通道接受四种源：**npm 包名 / Git 仓库地址 / 归档链接 / 本机目录**
+（设置 › 插件 › 插件管理里的安装对话框，或 `dsh plugin add <源>`）。按这四种源看：
+
+| 源 | 现在能用吗 | 还需要什么 |
+| --- | --- | --- |
+| 本机目录 | ✅ 已验证 | 克隆仓库后跑 `install-to-profile.ps1`（见上）。脚本做的事与宿主通道一致，只是替你写 profile 的 `package.json` |
+| Git 仓库地址 | ⚠️ 未验证 | 本仓库是**多插件仓库**，宿主按包名安装单个插件，需要指向子目录的写法；本仓库尚未按这个形态验证过 |
+| 归档链接 | ⚠️ 未验证 | 同上 |
+| npm 包名 | ❌ 还没有 | 插件尚未发布到 npm，且 `package.json` 里 `private: true`、没有 `files` 字段 |
+
+所以今天给别的 agent 的答案是**本机目录**那一条：克隆 → 跑脚本 → 重启应用 → 打路由自检。
+要让「一条命令装上」成立，需要先把每个插件单独发布到 npm，并把 `private`、`files`、
+`engines.dsh`、`dsh-plugin` 关键字补齐。
+
+更新同一条路：`git pull` → 重跑脚本 → **重启应用**。
+
 ## 更新
 
 ```powershell
 cd dsh-plugins
 git pull
-powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-desktop-platform
+powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-comprehensive-platform
 ```
 
 然后**重启 DSH Desktop**。前端（`client.js`）改动本可以靠插件管理里关一次开一次热加载，
@@ -111,7 +129,7 @@ node tools\vendor-our-free-model.mjs
 
 ## 环境
 
-- 宿主 `E:\ai\DeepSeek Harness`（harness `0.2.0-rc.2`），peer 依赖都是宿主自带的 `@deepseek-ai/*`
+- 宿主 harness `0.2.0-rc.2`，peer 依赖都是宿主自带的 `@deepseek-ai/*`
 - `dsh-our-free-model` ≥ 2.1.0（可选，只有综合平台后 8 个页签需要）
 - `dsh-localcoding-mcp` 需要已编译的 `LocalCodingMCP.exe`（0.3.0）；网页版方向另需
   `mcp-accounts\tunnel-client.exe` 与 `config\accounts.json`（可选 Playwright MCP 另需扩展令牌）
@@ -121,7 +139,7 @@ node tools\vendor-our-free-model.mjs
 ## 自检
 
 ```powershell
-node .\test\platform-client.test.mjs .\dsh-desktop-platform\client.js
+node .\test\platform-client.test.mjs .\dsh-comprehensive-platform\client.js
 node .\test\archive-delete.test.mjs
 node .\test\localcoding-client.test.mjs .\dsh-localcoding-mcp\client.js
 node .\test\localcoding-process.test.mjs

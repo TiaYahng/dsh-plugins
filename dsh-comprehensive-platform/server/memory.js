@@ -8,7 +8,7 @@
  * is exactly why the convention toggle edits `AGENTS.md` rather than a
  * separate preference: the instruction has to reach the agent as text.
  *
- * @module dsh-desktop-workbench/server/memory
+ * @module dsh-comprehensive-platform/server/memory
  */
 import { readFile, writeFile, unlink } from 'node:fs/promises'
 import { Buffer } from 'node:buffer'

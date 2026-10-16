@@ -1,5 +1,8 @@
 # CONTEXT — dsh-plugins 重构交接
 
+> 本文件是公开仓库的一部分，因此只写可复用的结论与流程，不写任何本机路径。
+> 只关于某一台机器的路径与状态在未跟踪的 `.local-context.md` 里（换机器或别人克隆时不存在）。
+
 > 本文是给**新会话 / 新 agent** 读的完整上下文。读完再给重构提示词。
 > 所有结论都带验证证据；未验证的明确标注为「未验证」。
 
@@ -7,8 +10,8 @@
 
 ## 0. 一句话现状
 
-自制插件（2 个）已从即将废弃的仓库 `E:\ai\aianymore` 移到本目录
-`E:\ai\dsh-plugins\`，并已在 `E:\ai\DeepSeek Harness`（harness `0.2.0-rc.2`）上实测可用：
+自制插件（2 个）已从即将废弃的仓库 `<旧仓库>` 移到本目录
+`<仓库根>\`，并已在 `<另一套发行版的宿主>`（harness `0.2.0-rc.2`）上实测可用：
 
 1. **`dsh-desktop-platform`** —— 综合平台，1 个设置页 / 4 个页签。
 2. **`dsh-localcoding-mcp`** —— 把 `LocalCodingMCP_v0_3` 接进宿主，三个方向：
@@ -21,15 +24,15 @@
 
 | 位置 | 角色 | 能否改 |
 | --- | --- | --- |
-| `E:\ai\dsh-plugins\` | **维护入口**，源码唯一权威 | ✅ 改这里 |
+| `<仓库根>\` | **维护入口**，源码唯一权威 | ✅ 改这里 |
 | `%APPDATA%\dsh-desktop\harness\profiles\web\plugins\<name>\` | 安装产物（脚本复制过去） | ❌ 会被覆盖 |
 | `%APPDATA%\dsh-desktop\harness\profiles\web\node_modules\<name>\` | pnpm 实体拷贝，实际加载的代码 | ❌ 会被覆盖 |
-| `E:\ai\DSH Desktop\` | 厂商应用（asar 打包，`resources\app.asar`） | ❌ 会被更新清空 |
-| `E:\ai\aianymore\` | **待废弃的仓库**（2523 MB / 80254 文件） | 已抽离 |
+| `<宿主安装目录>\` | 厂商应用（asar 打包，`resources\app.asar`） | ❌ 会被更新清空 |
+| `<旧仓库>\` | **待废弃的仓库**（2523 MB / 80254 文件） | 已抽离 |
 
 宿主（harness）版本：`0.2.0-rc.2`。应用版本：`0.11.1`。
 
-宿主包源码在 asar 里，查证用：`node <脚本> "E:\ai\DSH Desktop\resources\app.asar" grep <pattern> <路径过滤>`
+宿主包源码在 asar 里，查证用：`node <脚本> "<宿主安装目录>\resources\app.asar" grep <pattern> <路径过滤>`
 （自写脚本按 asar 头部 JSON 读文件，不需要解包）。
 
 ---
@@ -88,7 +91,7 @@ nav: '综合平台' / 'Workbench',
 ## 3. 目录内容
 
 ```
-E:\ai\dsh-plugins\
+<仓库根>\
 ├── dsh-desktop-platform\
 │   ├── client.js              客户端：设置页 + 页签壳 + 七个面板（未拆子文件，见 7.4）
 │   ├── index.js               服务端入口：name / inject / Config / apply
@@ -138,7 +141,7 @@ E:\ai\dsh-plugins\
 ## 4. 安装与验证
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File E:\ai\dsh-plugins\install-to-profile.ps1
+powershell -ExecutionPolicy Bypass -File <仓库根>\install-to-profile.ps1
 ```
 
 改完代码**必须重跑**，然后重启 DSH Desktop。
@@ -218,13 +221,13 @@ Profile recovery requires Safe Mode
 ## 6. 为什么插件不能放进应用目录
 
 ```yaml
-# E:\ai\DSH Desktop\resources\app-update.yml
+# <宿主安装目录>\resources\app-update.yml
 provider: generic
 url: https://dshdesktop.com/updates/latest/
 ```
 
 ```
-C:\Users\HP-XXX\AppData\Local\dsh-desktop-updater\installer.exe   248.2 MB   已暂存
+~\AppData\Local\dsh-desktop-updater\installer.exe   248.2 MB   已暂存
 https://dshdesktop.com/updates/latest/latest.yml → version 0.11.1
 ```
 
@@ -395,7 +398,7 @@ npm 最新 `0.1.5-rc.3` 的 peer 要求宿主 `0.1.5-rc.3`，本机是 `0.2.0-rc
 自制插件是 `file:` 依赖，`dsh.profile.bundles` 里与第三方混在同一个数组里。
 
 > 这张表原本列的是 `%APPDATA%\dsh-desktop\harness\profiles\web`。
-> **实际在跑的是 `~/.dsh/profiles/desktop`**（`E:\ai\DeepSeek Harness`），
+> **实际在跑的是 `<harness home>/profiles/<profile>`**（`<另一套发行版的宿主>`），
 > 它的第三方插件清单略有不同（多 `@michengai/dsh-skills-manager`、`@deepseek-ai/dsh-experimental-*` 等）。
 
 ---
@@ -438,13 +441,13 @@ node test\platform-client.test.mjs      通过（1 section / 3 tabs / 93 key 中
 
 ## 13. 相关但不在本目录的东西
 
-- `E:\ai\aianymore\`（待删）：独立版构建、`patches/`、`docs/`、`test/`。
+- `<旧仓库>\`（待删）：独立版构建、`patches/`、`docs/`、`test/`。
   删掉后本文第 7 节的规范仅剩此处。
 - `%APPDATA%\dsh-desktop\logs\harness.log`：启动诊断唯一来源。
   `[desktop]` 段是宿主侧，`[stderr] [harness-log]` 是后端插件；该构建**不记录 `[renderer]`**。
 - `%APPDATA%\dsh-desktop\harness\profiles\node_modules\@deepseek-ai\*` 是指向
-  `E:\ai\dsh-workbench\resources\app\node_modules\*` 的失效 junction（该路径已不存在）。
-  查宿主源码要读 `E:\ai\DSH Desktop\resources\app.asar`，不要顺着 junction 找。
+  `<另一仓库>\resources\app\node_modules\*` 的失效 junction（该路径已不存在）。
+  查宿主源码要读 `<宿主安装目录>\resources\app.asar`，不要顺着 junction 找。
 
 
 ---

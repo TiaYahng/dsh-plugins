@@ -5,7 +5,7 @@
  * web UI is the only caller, and it always runs on the machine that serves it.
  * Nothing here inspects a body or a query — that is each route module's job.
  *
- * @module dsh-desktop-workbench/server/http
+ * @module dsh-comprehensive-platform/server/http
  */
 import { Buffer } from 'node:buffer'
 

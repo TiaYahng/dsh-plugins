@@ -10,7 +10,7 @@
  * its persistence revision moves, so opening the page repeatedly does not
  * re-walk every stored log. Nothing here writes to a session.
  *
- * @module dsh-desktop-workbench/server/usage
+ * @module dsh-comprehensive-platform/server/usage
  */
 import { fail, sendJson, isTrustedRequest } from './http.js'
 

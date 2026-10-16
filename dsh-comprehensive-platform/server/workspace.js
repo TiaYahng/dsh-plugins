@@ -6,7 +6,7 @@
  * trusting the wire. Roots are matched case-folded because Windows paths reach
  * us with different drive-case depending on the caller.
  *
- * @module dsh-desktop-workbench/server/workspace
+ * @module dsh-comprehensive-platform/server/workspace
  */
 import { readFile } from 'node:fs/promises'
 import { isAbsolute, resolve } from 'node:path'

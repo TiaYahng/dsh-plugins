@@ -1,5 +1,5 @@
 {
-  "name": "dsh-desktop-platform",
+  "name": "dsh-comprehensive-platform",
   "version": "0.1.0",
   "description": "DSH Desktop platform page: usage statistics, session archive restore, and per-workspace memory management behind one Settings section.",
   "private": true,

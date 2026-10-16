@@ -33,7 +33,7 @@ FreeModel 的 8 个页面不占外层页签：外层只有 1 个 `freemodel` 页
 | 公告 EventSource 去掉 | 它自己的插件已经为整个应用面开了一条；再来一条就是同一份 feed 双份 toast 和系统通知 |
 | 导出 `exports.renderSettings` | 页面本身交出来，由本插件在自己的 section 里挂载 |
 
-`tools/vendor-our-free-model.mjs` 重新生成 `dsh-desktop-platform/vendor/our-free-model-client.js`
+`tools/vendor-our-free-model.mjs` 重新生成 `dsh-comprehensive-platform/vendor/our-free-model-client.js`
 并把它拼进 `client.js` 的 VENDOR 标记之间。**每处改动都按行内容定位，不按缩进定位**：
 源码是别人的，重排一次缩进不该让这个脚本变成空格游戏。原版更新后重跑即可。
 
@@ -135,10 +135,28 @@ FreeModel 自己还有「白嫖模型接入」（账号渠道）。它读的不�
 
 ## 为什么放在应用目录外面
 
-放进 `E:\ai\DSH Desktop` 会被厂商更新清空：electron-builder 的 NSIS 更新流程先跑旧版卸载器
+放进**宿主安装目录**会被厂商更新清空：electron-builder 的 NSIS 更新流程先跑旧版卸载器
 （`RMDir /r $INSTDIR`）再装新版，整个安装目录会被重建；自放进去的文件不在卸载记录里，
 但目录本身会被清掉。用户数据目录（`%APPDATA%\dsh-desktop\harness\`）不受影响，
 所以插件走 Profile 通道。
+
+## 重命名：包身份要跟着走，两个数据键不能跟着走
+
+包名从 `dsh-desktop-platform` 改成 `dsh-comprehensive-platform` 时跟着改的是**包身份**——
+宿主按它认插件：client bundle 的 id、`cordis.patch.yml` 里挂载 bundle 的那一行、
+服务端导出的 `name`、`package.json` 的 `name`，以及 profile 的 `dependencies` 与
+`dsh.profile.bundles`（旧条目由安装脚本的清理步骤摘掉，`node_modules` 里的旧实体拷贝一并删）。
+
+**不能跟着改的是两个键**，它们指向已经存在于别人机器上的数据：
+
+- `SETTINGS_NAMESPACE`（configForms 的命名空间）：改了等于把所有人存过的设置丢在原地。
+- 设置页的 section id：平台记住当前页签用的就是它，改了会让人回到第一个页签。
+
+HTTP 路由前缀 `/dsh-desktop/*` 同理：它是对外的字符串，自检与用户的书签都指着它，
+一并留在原地，只在文档里说明，不跟着包名走。
+
+这三处在自检里各自有常量，并断言它们**不随包名变化**——否则下一次重命名会顺手把它们带走，
+而那种回归没有任何症状。
 
 ## 安装 / 更新
 
@@ -162,14 +180,14 @@ powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1
 
 本机有两套 harness：
 
-| 安装 | profile | 说明 |
+| 宿主 | harness home 下的 `profiles\<profile>` | 说明 |
 | --- | --- | --- |
-| `E:\ai\DSH Desktop` | `%APPDATA%\dsh-desktop\harness\profiles\web` | 遗留，脚本默认打这里 |
-| `E:\ai\DeepSeek Harness` | `C:\Users\<user>\.dsh\profiles\desktop` | **实际在跑的那套**，harness home 是 `~/.dsh` |
+| 桌面版 | `%APPDATA%\dsh-desktop\harness` | 脚本默认打这套 |
+| 另一套发行版 | `~/.dsh` | 另一套数据目录，脚本的 `-DshHome` 能指过去 |
 
 两边共用 GUI 端口 19387，但各自只认自己的 profile —— 往错的那套装，路由全是 404。
 
-往**活着的** profile（`~/.dsh/profiles/desktop`）里跑 `pnpm install` 会毁掉它的安装树：
+往**不是脚本默认那套**的 profile 里跑 `pnpm install` 会毁掉它的安装树：
 pnpm 11.15.1 打完 `Packages: +N -2` 就报 `Worker pnpm#8 exited with code 1`
 （`--ignore-scripts`、`--reporter=ndjson` 都复现，日志里只有
 `Failed to load the ES module: .../pnpm/dist/worker.js` 这类噪音，给不出真正原因），
@@ -247,7 +265,7 @@ profile bundle "<name>" declares no dsh.bundle in its package.json
 ## 自检
 
 ```powershell
-node .\test\platform-client.test.mjs .\dsh-desktop-platform\client.js
+node .\test\platform-client.test.mjs .\dsh-comprehensive-platform\client.js
 node .\test\archive-delete.test.mjs
 node .\test\localcoding-client.test.mjs .\dsh-localcoding-mcp\client.js
 node .\test\localcoding-process.test.mjs
@@ -279,7 +297,7 @@ $env:LCM_URL = 'http://127.0.0.1:3011/mcp'; node .\test\localcoding-server.test.
 
 ## 本地编码 MCP（`dsh-localcoding-mcp`）
 
-把 `E:\ai\aiassistant\plugins\LocalCodingMCP_v0_3` 的 .NET 8 MCP 服务器接进宿主，三个方向：
+把 `LocalCodingMCP_v0_3` 的 .NET 8 MCP 服务器接进宿主，三个方向：
 本地工具入表、任务出给 Codex、隧道打通网页版 ChatGPT。
 
 ### 分层
@@ -402,7 +420,7 @@ MCP 的 `read_file` / `write_file` / `search_code` / `apply_patch` 与宿主原�
 
 ## 已验证 / 未验证
 
-**已验证**（宿主 `E:\ai\DeepSeek Harness`，harness 0.2.0-rc.2）：
+**已验证**（harness 0.2.0-rc.2）：
 
 - 两个自检脚本全过（含 4 个页签、8 个页内页面的路由与渲染断言）。
 - `install-to-profile.ps1` 实测执行通过，旧依赖与改名残留已从 profile 摘除。

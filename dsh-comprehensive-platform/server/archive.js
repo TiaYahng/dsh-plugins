@@ -8,7 +8,7 @@
  * nothing between, and the desktop companion merely filters archived ids out
  * of its lists. This module adds the missing direction — restore.
  *
- * @module dsh-desktop-workbench/server/archive
+ * @module dsh-comprehensive-platform/server/archive
  */
 import { fail, isTrustedRequest, readJson, sendJson } from './http.js'
 

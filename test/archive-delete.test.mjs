@@ -8,7 +8,7 @@
  */
 import fs from 'node:fs'
 
-const source = fs.readFileSync(new URL('../dsh-desktop-platform/client.js', import.meta.url), 'utf8')
+const source = fs.readFileSync(new URL('../dsh-comprehensive-platform/client.js', import.meta.url), 'utf8')
 
 let failures = 0
 function check (name, actual, expected) {
