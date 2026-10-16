@@ -15,17 +15,25 @@ DSH Harness 的自制插件。两个：
 
 前三页（用量统计 / 归档历史 / 记忆系统）用本插件自己的 `/dsh-desktop/*` 路由，数据在本插件里。
 
-第四页 FreeModel **不是本插件写的页面**：它是另一个插件 `dsh-our-free-model` 的设置页。做法是把
-那个插件自己的前端代码原样内嵌进本插件（只改了十二处，清单在 `tools/vendor-our-free-model.mjs`
-的文件头，每处都写了为什么），再把它挂成这一页的第四个页签。改的地方里有一处是从它的页签
-列表里删掉「免费模型」、一处是去掉它自己的标题行与「公告中心」面板、EAC 挪到第三。
-所以它那 8 个页面（白嫖模型接入 / 聚合渠道 / EAC 模型 / 省 Token / 路由 / 数据看板 /
-运行日志 / 网关设置）的行为与原版一致，也能跟着它升级。
+第四页 FreeModel **不是本插件写的页面**：它是 `dsh-our-free-model` 的设置页。做法是把它自己的
+代码取过来，只改必须改的地方（清单在 `tools/vendor-our-free-model.mjs` 的文件头与服务端阶段的
+注释里，每处都写了为什么），再挂成这一页的第四个页签：
 
-这一页要的数据全部来自那个插件提供的 `/api/our-free-model/*` 路由；本插件不持有它的数据、
-凭据或存储。**没装 `dsh-our-free-model` 时这一页用不了**：页面会显示它自己的加载 / 错误提示
-（不是本插件写的说明），其余三个页签照常。要跟着它升级内嵌副本，见下面的「更新」。
+- **页面**（前端）内嵌在 `client.js` 的 VENDOR 段里，十三处改动，含删掉它的「免费模型」页、
+  去掉它自己的标题行与「公告中心」面板、EAC 挪到第三、API 指向本插件自己的前缀。
+- **服务端**在 `free-model/`，提供 `/api/comprehensive-platform/free-model/*`。
+  它自己的自更新、公告通道与热重载都已停用——那三样都会改写已安装的字节，而那些字节现在是
+  本插件的；数据目录也换成自己的，避免两个插件写同一份目录。
 
+所以这一页**不依赖任何其他插件**：装这一个就完整可用。那 8 个页面（白嫖模型接入 / 聚合渠道 /
+EAC 模型 / 省 Token / 路由 / 数据看板 / 运行日志 / 网关设置）的行为与原版一致。
+来源与改动写在 `free-model/NOTICE.md`。
+
+> **那 13 个账号渠道的包不在这个仓库里。** `free-model/vendor/channel-pack/` 是第三方项目的整份拷贝，
+> 里面带着它的 Google OAuth 凭据；本仓库是公开的，推上去等于公开别人的凭据（GitHub 的推送保护也确实拦了）。
+> 所以它 `.gitignore` 掉了，只留在装了它的机器上。缺了它插件照常工作：渠道列表会显示「渠道包不可用」
+> 与原因，其余页面（免费车道、EAC 模型、账本、日志、网关、省 Token、路由）不受影响——这是它自己的降级路径。
+> 它的 LICENSE 与 NOTICE 仍然在仓库里，第三方来源有据可查。
 ## 本地编码 MCP（`dsh-localcoding-mcp`）
 
 把 `LocalCodingMCP_v0_3`（一个 .NET 8 的 MCP 服务器，40 个工具）接进宿主，三个方向：
@@ -56,7 +64,7 @@ DSH Harness 的自制插件。两个：
 ## 安装
 
 前置：**DSH Desktop 至少启动过一次**（profile 的 `package.json` 由它生成），PATH 上有 `pnpm`
-（`corepack enable pnpm` 或 `npm i -g pnpm`）。FreeModel 页签另需 `dsh-our-free-model`（可选）。
+（`corepack enable pnpm` 或 `npm i -g pnpm`）。不需要装别的插件：四个页签的数据都在本插件里。
 
 ```powershell
 git clone https://github.com/TiaYahng/dsh-plugins.git
@@ -126,7 +134,7 @@ powershell -ExecutionPolicy Bypass -File .\install-to-profile.ps1 -Plugin dsh-co
 但服务端是 Node 的 ESM，模块缓存不随开关清除——不重启就还在跑旧的服务端代码，
 而前端已经变了，两边对不上。
 
-内嵌的那份原版副本要跟着 `dsh-our-free-model` 升级时：先在 profile 里升级那个插件，再跑
+内嵌的那份副本要跟上上游时：先升级 profile 里的 `dsh-our-free-model`，再跑
 
 ```powershell
 node tools\vendor-our-free-model.mjs
@@ -137,7 +145,7 @@ node tools\vendor-our-free-model.mjs
 ## 环境
 
 - 宿主 harness `0.2.0-rc.2`，peer 依赖都是宿主自带的 `@deepseek-ai/*`
-- `dsh-our-free-model` ≥ 2.1.0（可选，只有综合平台后 8 个页签需要）
+- 内嵌的上游版本：`dsh-our-free-model` 2.1.0（前端与服务端都在本仓库里，见 `free-model/NOTICE.md`）
 - `dsh-localcoding-mcp` 需要已编译的 `LocalCodingMCP.exe`（0.3.0）；网页版方向另需
   `mcp-accounts\tunnel-client.exe` 与 `config\accounts.json`（可选 Playwright MCP 另需扩展令牌）
 - Codex CLI 走的是第三方中转，`codex login status` 说「未登录」是**预期**的（中转用 bearer
@@ -148,6 +156,7 @@ node tools\vendor-our-free-model.mjs
 ```powershell
 node .\test\platform-client.test.mjs .\plugins\dsh-comprehensive-platform\client.js
 node .\test\archive-delete.test.mjs
+node .\test\free-model-standalone.test.mjs
 node .\test\localcoding-client.test.mjs .\dsh-localcoding-mcp\client.js
 node .\test\localcoding-process.test.mjs
 node .\test\localcoding-tunnel.test.mjs

@@ -34,6 +34,7 @@ import { createRouteTable } from './server/http.js'
 import { readQuota, registerUsageRoutes, SUMMARY_PATH } from './server/usage.js'
 import { registerArchiveRoutes, LIST_PATH, WORKSPACES_PATH } from './server/archive.js'
 import { registerMemoryRoutes, MEMORY_PATH, CONVENTION_PATH, HANDOFF_PATH } from './server/memory.js'
+import * as freeModel from './free-model/server.js'
 
 /** Stable Cordis plugin name (also the id used in the Desktop patch row). */
 export const name = 'dsh-comprehensive-platform'
@@ -105,4 +106,21 @@ export function apply(ctx, config) {
       }
     }, 'dsh-comprehensive-platform: platform routes')
   )
+
+  // The fourth tab's server, vendored from dsh-our-free-model.
+  //
+  // It used to live in that plugin, which made this plugin depend on somebody
+  // else's being installed: ours alone gave you three tabs and a dead fourth. The
+  // copy under free-model/ is patched to serve this plugin's API prefix, to keep
+  // its own data directory, and to stand down its updater, announcement feed and
+  // hot reload — all three of which rewrite installed bytes, and those bytes are
+  // ours now. See free-model/NOTICE.md.
+  //
+  // `llm` is a soft dependency on purpose. Their half declares it as its only
+  // hard one, and adding it to this plugin's `inject` would mean a host without
+  // the model plane loses the other three tabs as well. Nested, the fourth tab
+  // goes quiet and the rest of the page keeps answering.
+  ctx.inject(['llm'], (lane) => {
+    freeModel.apply(lane, { distribution: 'managed' })
+  })
 }

@@ -446,7 +446,7 @@ window.__ModuleLoader__.load({
       try {
     /* >>> VENDOR:BEGIN */
 /* ══ vendored: dsh-our-free-model, browser half ══════════════════════════════
-   Taken from the owner's own client.js and patched in 12 places:
+   Taken from the owner's own client.js and patched in 13 places:
      · bundle id
      · remembered pages
      · nav entry
@@ -458,6 +458,7 @@ window.__ModuleLoader__.load({
      · the star sits beside the tabs, not under them
      · EAC is the third tab; the landing page follows the first
      · announcement panel (its feed belongs to the owner, not to this page)
+     · the page asks our API, not another plugin's
      · component export
    Regenerate with:  node tools/vendor-our-free-model.mjs
    Edit the fork, not the original: the next run reads the original wholesale. */
@@ -473,7 +474,7 @@ window.__ModuleLoader__.load({
  *   3. nothing else — no shadowing of the stock model picker, whose grouping by
  *      provider route is exactly the mechanism this plugin uses for its tag.
  *
- * Data is read over the plugin's own same-origin `/api/our-free-model/*` routes
+ * Data is read over the plugin's own same-origin `/api/comprehensive-platform/free-model/*` routes
  * rather than a typed Remote binding, because those routes are served by the same
  * host process on every kernel line this plugin targets.
  *
@@ -2603,7 +2604,7 @@ window.__ModuleLoader__.load({
     // 相对路径随页面 base 走，根路径部署下与原值完全一致。解析不了（无 document
     // 的宿主、非常规 base）就退回根路径原值——行为不比修复前差。
     const API = (() => {
-      try { return new URL('api/our-free-model', document.baseURI).pathname } catch { return '/api/our-free-model' }
+      try { return new URL('api/comprehensive-platform/free-model', document.baseURI).pathname } catch { return '/api/comprehensive-platform/free-model' }
     })()
     const SEASON = ['#4C8DFF', '#3ECFA0', '#F2A65A', '#E36AA6', '#8B7BF0', '#39B8C4', '#D9743E', '#7BB24A']
 

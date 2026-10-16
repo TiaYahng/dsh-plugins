@@ -2,3 +2,13 @@
 *.log
 .local-memory.md
 .local-context.md
+
+# The absorbed free-channel pack (13 account channels) carries a Google OAuth
+# client id and secret belonging to the project it was copied from. It stays on
+# this machine and is copied into the profile by install-to-profile.ps1, but it
+# is not committed: this repository is public, and a push would publish someone
+# else's credentials. Its LICENSE and NOTICE.md are tracked anyway, so the
+# provenance of the vendored server is still on record.
+plugins/dsh-comprehensive-platform/free-model/vendor/channel-pack/
+!plugins/dsh-comprehensive-platform/free-model/vendor/channel-pack/LICENSE
+!plugins/dsh-comprehensive-platform/free-model/vendor/channel-pack/NOTICE.md

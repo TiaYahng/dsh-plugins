@@ -83,12 +83,19 @@ Write-Host ''
 #    预检失败，应用会拒绝正常启动并回退 Safe Mode。
 New-Item -ItemType Directory -Force -Path $pluginsDir | Out-Null
 foreach ($name in $names) {
-    $source = $pluginDirs | Where-Object { $_.Name -eq $name } | Select-Object -First 1
+    # 按名字取第一个匹配会挑错：`git mv` 之后根目录下可能留着一个同名空目录，
+    # 它排在真正那个前面，复制过去就是 0 个文件，安装「成功」而运行时装了个空插件。
+    # 只认真的有 package.json 的那个。
+    $source = $pluginDirs |
+        Where-Object { $_.Name -eq $name -and (Test-Path (Join-Path $_.FullName 'package.json')) } |
+        Select-Object -First 1
     if ($null -eq $source) { throw "找不到插件目录: $name" }
     $target = Join-Path $pluginsDir $name
     Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue
     Copy-Item $source.FullName $target -Recurse -Force
-    Write-Host "  已复制 $name -> $target"
+    $copied = @(Get-ChildItem $target -Recurse -File -ErrorAction SilentlyContinue).Count
+    if ($copied -eq 0) { throw "复制了 0 个文件：$($source.FullName)" }
+    Write-Host "  已复制 $name ($copied 个文件) -> $target"
 }
 
 # 2) 注册：dependencies 用 profile 内路径，dsh.profile.bundles 补上包名。

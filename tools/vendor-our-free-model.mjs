@@ -268,7 +268,27 @@ note('bundle id')
   note('announcement panel (its feed belongs to the owner, not to this page)')
 }
 
-/* 12. The page is handed out instead. */
+/* 12. The page asks our own API. The browser half used to address the owner's
+      server; the server half now travels with this plugin (see the phase below),
+      on a prefix of its own, so the page has to ask for it there. Two lines carry
+      the prefix: the header comment that documents the transport, and the resolved
+      base with its fallback for a missing base URI. */
+{
+  const at = indexOf("new URL('api/our-free-model'")
+  let replaced = 0
+  const swap = (line) => line.replace(/api\/our-free-model/g, () => {
+    replaced += 1
+    return 'api/comprehensive-platform/free-model'
+  })
+  lines[at] = swap(lines[at])
+  // The doc comment above it, so the transport this page uses is not a lie.
+  const comment = indexOf('the plugin\'s own same-origin')
+  lines[comment] = swap(lines[comment])
+  if (replaced !== 3) throw new Error(`expected three API strings, found ${replaced}`)
+  note('the page asks our API, not another plugin\'s')
+}
+
+/* 13. The page is handed out instead. */
 {
   const at = indexOf('exports.apply = apply')
   const indent = ' '.repeat(lines[at].search(/\S/))
@@ -299,6 +319,143 @@ const to = client.indexOf(end)
 if (from < 0 || to < 0) throw new Error('client.js has no VENDOR markers')
 const spliced = client.slice(0, from + begin.length) + '\n' + forked + '\n' + client.slice(to)
 fs.writeFileSync(clientFile, spliced, 'utf8')
+
+/* ── the server half ─────────────────────────────────────────────────────────
+   The page needs an API and this copy used to borrow someone else's. That is
+   exactly the external condition that makes a plugin not standalone: install
+   ours and the fourth tab is dead until a second plugin shows up. So the server
+   comes along too — same rule as the browser half: take their source as it is,
+   patch the handful of places where it believes it owns the machine, and say so.
+
+   What is patched, and why each one is required rather than tidy:
+
+     1. the route prefix. `/api/our-free-model` exists only in their index.js, so
+        one replacement moves the whole API. It has to move: two plugins serving
+        one prefix would fight, and their own installer may be sitting right
+        next to this one.
+     2. the data directory. Two writers on one store is how an install corrupts
+        itself — their own comments say so about their bytes; the same applies to
+        their catalog. Ours is its own directory.
+     3. the updater, the announcement channel and the hot reload stand down.
+        Their code already has a mode for exactly this case — a distribution pack
+        owning the bytes — and it is switched on here unconditionally, so the
+        property does not depend on what the call site passes.
+     4. the version string, which they read from their own package.json. There is
+        none in this tree; ours answers instead, so `/summary` reports something
+        true.
+     5. the module's own file name, for the reload path that managed mode never
+        takes.
+
+   Their `src/`, the absorbed channel pack (a third-party upstream's copy, with
+   its own MIT LICENSE and NOTICE, kept as they are) and their LICENSE come
+   across untouched.
+ */
+const API_PREFIX = '/api/comprehensive-platform/free-model'
+const upstreamDir = path.dirname(source)
+const freeModelDir = `${root}/plugins/dsh-comprehensive-platform/free-model`
+const serverEdits = []
+const serverNote = (why) => serverEdits.push(why)
+
+const copyTree = (from, to) => {
+  fs.mkdirSync(path.dirname(to), { recursive: true })
+  fs.cpSync(from, to, { recursive: true })
+}
+const copyFile = (from, to) => {
+  fs.mkdirSync(path.dirname(to), { recursive: true })
+  fs.copyFileSync(from, to)
+}
+
+// Their browser half is already inlined in client.js; the rest of the tree is
+// what the server needs at runtime. The pack keeps its own path — their code
+// loads it with a dynamic import of `./vendor/channel-pack/pack.js`, and pack.js
+// finds the wasm next to itself by import.meta.url — so moving it would be a
+// patch that exists only to be undone by the next person reading the diff.
+fs.rmSync(freeModelDir, { recursive: true, force: true })
+copyTree(`${upstreamDir}/src`, `${freeModelDir}/src`)
+copyTree(`${upstreamDir}/vendor/channel-pack`, `${freeModelDir}/vendor/channel-pack`)
+copyTree(`${upstreamDir}/adapter`, `${freeModelDir}/adapter`)
+copyTree(`${upstreamDir}/locale`, `${freeModelDir}/locale`)
+copyFile(`${upstreamDir}/LICENSE`, `${freeModelDir}/LICENSE`)
+
+/* 1-2, 4-5: their index.js, as `server.js`. */
+{
+  const at = `${freeModelDir}/server.js`
+  let server = fs.readFileSync(`${upstreamDir}/index.js`, 'utf8')
+  const swap = (from, to, why) => {
+    if (server.includes(from) === false) throw new Error(`the server half does not contain: ${from.slice(0, 60)}`)
+    server = server.replace(from, to)
+    serverNote(why)
+  }
+  swap("path: '/api/our-free-model'", `path: '${API_PREFIX}'`, 'the API prefix is ours')
+  swap("'/api/our-free-model/events'", `'${API_PREFIX}/events'`, 'the events route moves with it')
+  swap(`'our-free-model: settings API mounted at /api/our-free-model'`, `'dsh-comprehensive-platform: free-model API mounted at ${API_PREFIX}'`, 'the mount log names the new prefix')
+  swap("path.join(PKG_DIR, 'package.json')", "path.join(PKG_DIR, '..', 'package.json')", 'the reported version is this plugin\'s')
+  swap("new URL('index.js', import.meta.url)", "new URL('server.js', import.meta.url)", 'the reload entry point is this file')
+  swap(' * @module index.js', ' * @module free-model/server.js (vendored from dsh-our-free-model)', 'the module header says where it came from')
+  fs.writeFileSync(at, server, 'utf8')
+}
+
+/* 3: managed, unconditionally. */
+{
+  const at = `${freeModelDir}/server.js`
+  let server = fs.readFileSync(at, 'utf8')
+  const from = `function distributionOf(config, settings) {
+  if (config?.distribution === 'managed' || settings.get().distribution === 'managed') return 'managed'`
+  const to = `function distributionOf(config, settings) {
+  // Vendored: always managed. Their updater rewrites the installed package from
+  // their repository, their announcement channel publishes their feed, and their
+  // hot reload replaces their own module — all three would be writing to this
+  // plugin's bytes, which are ours. 'managed' is the mode they built for a
+  // distribution pack that owns the bytes, so it is the right one here, and it
+  // is unconditional so the property cannot be lost by a call site.
+  void config
+  void settings
+  if (true) return 'managed'`
+  if (server.includes(from) === false) throw new Error('the distribution switch moved')
+  fs.writeFileSync(at, server.replace(from, to), 'utf8')
+  serverNote('self-update, announcements and hot reload stand down')
+}
+
+/* The store lives beside the harness home, under a name of its own. */
+{
+  const at = `${freeModelDir}/src/store.js`
+  const store = fs.readFileSync(at, 'utf8')
+  const from = "export const DATA_DIR_NAME = 'our-free-model'"
+  if (store.includes(from) === false) throw new Error('the data directory name moved')
+  fs.writeFileSync(at, store.replace(from, "export const DATA_DIR_NAME = 'comprehensive-platform'"), 'utf8')
+  serverNote('its own data directory')
+}
+
+fs.writeFileSync(`${freeModelDir}/NOTICE.md`, `# free-model/ — vendored
+
+The browser half lives inside client.js between the VENDOR markers; this
+directory is its server half. Both come from **dsh-our-free-model** (MIT), taken
+as they are and patched only where the code believed it owned the machine:
+
+| Where | What | Why |
+| --- | --- | --- |
+| server.js | API prefix → ${API_PREFIX} | two plugins must not serve one prefix |
+| server.js | distributionOf → always managed | its updater, announcement feed and hot reload rewrite the installed package, which is this plugin's bytes |
+| server.js | version read from the parent package.json | there is no package.json of its own here |
+| src/store.js | DATA_DIR_NAME → comprehensive-platform | two writers on one catalog corrupt it |
+
+Everything under src/ and vendor/ is theirs, unmodified. vendor/channel-pack/ is
+in turn a complete copy of a third-party upstream — see channel-pack/NOTICE.md,
+which names it and its licence. The LICENSE next to this file is theirs.
+
+`, 'utf8')
+serverNote('provenance recorded next to the copy')
+
+const serverBytes = (function total(dir) {
+  let sum = 0
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name)
+    sum += entry.isDirectory() ? total(full) : fs.statSync(full).size
+  }
+  return sum
+})(freeModelDir)
+console.log(`vendored server ${(serverBytes / 1024 / 1024).toFixed(1)} MB with ${serverEdits.length} edits:`)
+for (const why of serverEdits) console.log(`  · ${why}`)
 
 console.log(`vendored ${(forked.length / 1024).toFixed(0)} KB with ${edits.length} edits:`)
 for (const why of edits) console.log(`  · ${why}`)

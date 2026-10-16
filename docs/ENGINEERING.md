@@ -158,6 +158,49 @@ HTTP 路由前缀 `/dsh-desktop/*` 同理：它是对外的字符串，自检与
 这三处在自检里各自有常量，并断言它们**不随包名变化**——否则下一次重命名会顺手把它们带走，
 而那种回归没有任何症状。
 
+## 第 4 页为什么现在自带服务端
+
+内嵌页面只是把「必须先装另一个插件」这件事往后推了一格：前端在自己的包里，数据还在别人
+的包里。装我们一个，第 4 页是死的。**独立的意思是装一个就完整**，所以服务端一起搬。
+
+搬的是他们的服务端整个 `index.js` + `src/`（渠道包另说，见下），
+改动只有四处，每处都是「不改就会出事」而不是「改了更整齐」：
+
+| 位置 | 改动 | 不改会怎样 |
+| --- | --- | --- |
+| `free-model/server.js` | 路由前缀 → `/api/comprehensive-platform/free-model` | 两个插件抢同一个前缀；对方的插件可能就装在旁边 |
+| `free-model/server.js` | `distributionOf()` 恒为 `managed` | 它的自更新、公告通道、热重载会去改**我们**已安装的字节 |
+| `free-model/src/store.js` | `DATA_DIR_NAME` → `comprehensive-platform` | 两个写手写同一份目录，正是他们自己警告过的损坏方式 |
+| `free-model/server.js` | 版本号读上一层的 `package.json` | 这棵树里没有它自己的 manifest，`/summary` 会报空版本 |
+
+`managed` 这个模式是他们为「发行包接管字节」写的，正好是我们要的状态，而且是**无条件**打开的：
+这样这条性质写在 fork 里，不依赖调用点传什么参数。
+
+`llm` 保持软依赖（`ctx.inject(['llm'], …)`）。他们的服务端只硬依赖这一个；把它提到本插件的
+`inject` 里，等于让「没有模型面」的宿主连另外三个页签一起失去。自检 `test/free-model-standalone.test.mjs`
+把上面每一条都钉住：前缀、数据目录、managed 开关、`llm` 的软依赖、以及 LICENSE / NOTICE 四份
+出处文件都在。
+
+许可链是三层：他们的 MIT（`free-model/LICENSE`）→ 渠道包是他们从第三方 upstream 整份拷贝的
+（`vendor/channel-pack/NOTICE.md` 写明 upstream 与提交号，自带 MIT `LICENSE`）→ 我们这份 fork 的
+改动记在 `free-model/NOTICE.md`。三层一份都不能少。
+
+### 渠道包为什么不进仓库
+
+`vendor/channel-pack/pack.js` 里有 `GEMINI_DEFAULT_CLIENT_ID` 与 `GEMINI_DEFAULT_CLIENT_SECRET`，
+是**上游作者的** Google OAuth 凭据。仓库是公开的，第一次 push 就被 GitHub 的推送保护拦下
+（`Push cannot contain secrets`）。处理方式：包 `.gitignore` 掉，只留在装了它的机器上，
+许可与 NOTICE 两个文本文件照常进仓库，来源有据可查。
+
+两种状态都必须是好的：
+
+- 有包（这台机器）：13 个账号渠道正常，`free-model-standalone.test.mjs` 断言包与 wasm 在它自己的位置上。
+- 无包（别人克隆后）：他们的服务端本来就把它当可选挂载（`void import(...)` 的 `.catch` 里
+  `channelPack = { state: 'failed', error }`），页面会说明渠道列表为什么空，其余页面照常。
+  自检断言的正是这条降级路径存在。
+
+两条路都跑过（把包移走再跑一次），不是只验证了有包的那种。
+
 ## 上架插件列表：目录在另一个仓库里
 
 市场里的插件目录不是市场自己维护的索引：它每次启动都读

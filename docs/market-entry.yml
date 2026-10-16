@@ -18,14 +18,14 @@
 #   · GitHub topic: dsh-plugin（列表的发现入口，已加）
 #   · 插件放在 plugins/ 下 —— CI 只认根包或 packages/ · plugins/ · apps/ 子包
 #   · package.json 声明了 dsh.bundle、engines.dsh、dsh-plugin 关键字
-#   · dsh-our-free-model 作为**可选** peerDependency 指向 npm 上的原包，
-#     而不是仓库里那份内嵌副本（第四页要的数据全靠它）
+#   · 第四页的前后端都随本插件内嵌（free-model/ 与 client.js 的 VENDOR 段），
+#     来源、改动与上游许可见 free-model/NOTICE.md —— 不再是「还要装另一个插件」
 #
 # 提交时可能被问到的几点，先想好答案：
 #   · category 选了 usage（用量统计是第一页）。维护者若觉得 session 或 memory
 #     更贴切会直接改，不会因此打回。
 #   · 描述里每一句都能对着代码核：四个页签、归档的恢复与永久删除、记忆按工作区、
-#     第四页内嵌且依赖 dsh-our-free-model —— 都是代码里实际做的事，没有形容词。
+#   · 第四页的前后端都随插件内嵌 —— 都是代码里实际做的事，没有形容词。
 #   · 评审会看「依赖是否指向原作者」。内嵌的是对方插件的**前端那一半**，vendor
 #     文件头写明了来源与十二处改动，运行时数据仍然只走对方的插件，没有重上传
 #     对方的整包；package.json 里的 peer 也指向 npm 上的原包。
@@ -38,5 +38,5 @@ url: https://github.com/TiaYahng/dsh-plugins/tree/main/plugins/dsh-comprehensive
 name: TiaYahng/dsh-plugins#plugins/dsh-comprehensive-platform
 category: usage
 description:
-  en: 'One Settings page for four jobs: token usage statistics, session-archive restore and permanent deletion, per-workspace memory, and the free-model pages from dsh-our-free-model embedded as a fourth tab (that plugin is required for that tab).'
-  zh: '一个设置页装四件事：用量统计、归档会话的恢复与永久删除、按工作区管理记忆，以及把 dsh-our-free-model 的免费模型页面内嵌成第四个页签（那一页需要装那个插件）。'
+  en: 'One Settings page for four jobs: token usage statistics, session-archive restore and permanent deletion, per-workspace memory, and the free-model pages from dsh-our-free-model embedded as a fourth tab Both halves of the model lane are vendored, so it needs no other plugin.'
+  zh: '一个设置页装四件事：用量统计、归档会话的恢复与永久删除、按工作区管理记忆，以及八个免费模型页面（账号渠道、积分、账本、日志、网关）作为第四个页签。模型这一路的前后端都随插件内嵌，不需要另装别的插件。'
