@@ -334,12 +334,16 @@ window.__ModuleLoader__.load({
 .dshPlatformMeta{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px;overflow-wrap:anywhere}
 .dshPlatformHandoff{white-space:pre-wrap;word-break:break-word;margin:0;padding:10px 12px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);user-select:text;cursor:text;font-size:12px;line-height:1.6;max-height:280px;overflow:auto}
 /* ── Tab strip ─────────────────────────────────────────────────────────── */
-.dshPlatformTabs{gap:18px;border-bottom:.5px solid var(--dsw-alias-border-l4);display:flex;overflow-x:auto}
-.dshPlatformTab{color:var(--dsw-alias-label-tertiary);font:inherit;cursor:pointer;background:0 0;border:none;border-bottom:2px solid transparent;white-space:nowrap;padding:6px 2px 8px;font-size:13px;line-height:20px;transition:color .15s ease,border-color .15s ease}
+.dshPlatformNav{position:sticky;top:0;z-index:30;padding:10px 12px;border-radius:16px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l2) 82%,transparent);background:color-mix(in srgb,var(--dsw-alias-bg-layer-2) 62%,transparent);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 7%,transparent),0 8px 26px color-mix(in srgb,var(--dsw-alias-label-primary) 10%,transparent)}
+.dshPlatformTabs{position:relative;display:flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:13px;border:1px solid color-mix(in srgb,var(--dsw-alias-border-l1) 80%,transparent);background:color-mix(in srgb,var(--dsw-alias-bg-layer-1) 62%,transparent);box-shadow:inset 0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 4%,transparent)}
+.dshPlatformGlider{position:absolute;top:0;left:0;border-radius:10px;background:linear-gradient(150deg,color-mix(in srgb,var(--dsw-alias-bg-layer-3) 92%,transparent),color-mix(in srgb,var(--dsw-alias-bg-layer-2) 88%,transparent));box-shadow:0 3px 10px color-mix(in srgb,var(--dsw-alias-label-primary) 14%,transparent),inset 0 1px 0 color-mix(in srgb,var(--dsw-alias-label-primary) 9%,transparent);transition:transform .34s cubic-bezier(.22,.61,.36,1),width .34s cubic-bezier(.22,.61,.36,1);pointer-events:none}
+.dshPlatformTab{position:relative;z-index:1;color:var(--dsw-alias-label-secondary);font:inherit;font-weight:600;cursor:pointer;background:transparent;border:none;white-space:nowrap;padding:6px 13px;border-radius:10px;font-size:12px;line-height:18px;transition:color .2s ease}
 .dshPlatformTab:hover{color:var(--dsw-alias-label-primary)}
-.dshPlatformTab.isActive{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-brand-primary);font-weight:500}
-.dshPlatformTab:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px;border-radius:4px}
-.dshPlatformPanels{flex-direction:column;gap:16px;display:flex}
+.dshPlatformTab.isActive{color:var(--dsw-alias-label-primary)}
+.dshPlatformTab:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+.dshPlatformPanels{flex-direction:column;display:flex}
+.dshPlatformPanels.isHost{flex:1;min-height:0;gap:0}
+.dshPlatformPanel.isHost{padding:0;background:transparent}
 /* A hidden panel must stay hidden: the root sets display:flex, which would
    otherwise win over the user agent's [hidden] rule. */
 .dshPlatformPanel[hidden]{display:none}
@@ -6634,6 +6638,12 @@ window.__ModuleLoader__.load({
      */
     function TabBar({ t, active, onSelect }) {
       const nodes = React.useRef(new Map())
+      const [glider, setGlider] = React.useState({ left: 0, width: 0 })
+      React.useEffect(() => {
+        const node = nodes.current.get(active)
+        if (node === null || node === undefined) return
+        setGlider({ left: node.offsetLeft, width: node.offsetWidth })
+      }, [active, t])
       const move = (event) => {
         const index = TABS.findIndex((tab) => tab.id === active)
         let next = null
@@ -6646,8 +6656,14 @@ window.__ModuleLoader__.load({
         onSelect(TABS[next].id)
         nodes.current.get(TABS[next].id)?.focus()
       }
-      return React.createElement('div', { className: 'dshPlatformTabs', role: 'tablist', 'aria-label': t('nav'), onKeyDown: move },
-        TABS.map((tab) => React.createElement('button', {
+      return React.createElement('div', { className: 'dshPlatformNav' },
+        React.createElement('div', { className: 'dshPlatformTabs', role: 'tablist', 'aria-label': t('nav'), onKeyDown: move },
+          glider.width > 0 && React.createElement('span', {
+            className: 'dshPlatformGlider',
+            'aria-hidden': 'true',
+            style: { transform: 'translate(' + glider.left + 'px, 0px)', width: glider.width + 'px' }
+          }),
+          TABS.map((tab) => React.createElement('button', {
           key: tab.id,
           ref: (node) => {
             if (node === null) nodes.current.delete(tab.id)
@@ -6661,12 +6677,12 @@ window.__ModuleLoader__.load({
           'aria-controls': `dshPlatformPanel-${tab.id}`,
           tabIndex: active === tab.id ? 0 : -1,
           onClick: () => onSelect(tab.id)
-        }, t(tab.label))))
+        }, t(tab.label)))))
     }
 
-    function Panel({ id, active, children }) {
+    function Panel({ id, active, children, host }) {
       return React.createElement('div', {
-        className: 'dshPlatformPanel',
+        className: host === true ? 'dshPlatformPanel isHost' : 'dshPlatformPanel',
         role: 'tabpanel',
         id: `dshPlatformPanel-${id}`,
         'aria-labelledby': `dshPlatformTab-${id}`,
@@ -7376,16 +7392,18 @@ window.__ModuleLoader__.load({
         rememberTab(id)
         setVisited((current) => (current.has(id) ? current : new Set(current).add(id)))
       }
-      const panel = (id, child) =>
-        visited.has(id) ? React.createElement(Panel, { id, active: active === id }, child) : null
-      const tabPanel = (tab, child) => panel(tab.id, child)
+      const panel = (id, child, host) =>
+        visited.has(id) ? React.createElement(Panel, { id, active: active === id, host }, child) : null
+      // The owner's page is a whole shell of its own — aurora, glass nav, its
+      // own spacing — so it gets the canvas, with nothing wrapped round it.
+      const tabPanel = (tab, child, host) => panel(tab.id, child, host)
       return React.createElement('div', { className: 'dshPlatform' },
         React.createElement(TabBar, { t, active, onSelect: select }),
-        React.createElement('div', { className: 'dshPlatformPanels' },
+        React.createElement('div', { className: active === TABS[3].id ? 'dshPlatformPanels isHost' : 'dshPlatformPanels' },
           tabPanel(TABS[0], React.createElement(UsagePanel, { t, scope })),
       tabPanel(TABS[1], React.createElement(ArchivePanel, { t, host })),
       tabPanel(TABS[2], React.createElement(MemoryPanel, { t })),
-      tabPanel(TABS[3], React.createElement(VendoredFreeModel, { t, ctx }))))
+      tabPanel(TABS[3], React.createElement(VendoredFreeModel, { t, ctx }), true)))
     }
     // Declared soft dependencies. The host refuses to hand over a service that
     // is not named here — `ctx.locale` without this list throws

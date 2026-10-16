@@ -251,18 +251,41 @@ console.log(`inject: declares ${[...declared].join(', ')} · client touches ${[.
 
 const tree = component(entry.inject())
 if (tree.type !== 'div' || tree.props.className !== 'dshPlatform') throw new Error('section root is not the platform shell')
-const [tabBarElement, panelHost] = tree.children
-// The first child is the TabBar component element; render it to reach its props.
-const tabBar = tabBarElement.type(tabBarElement.props)
-if (tabBar.props.role !== 'tablist') throw new Error('first child is not the tab strip')
-if (tabBar.children.length !== 4) throw new Error(`expected 4 tabs, got ${tabBar.children.length}`)
-const tabIds = tabBar.children.map((child) => child.props.id)
+const [navElement, panelHost] = tree.children
+// The first child is the frosted nav; the pill row lives inside it.
+const nav = navElement.type(navElement.props)
+if (nav.props.className !== 'dshPlatformNav') throw new Error('the first child is not the nav bar')
+// The pill row is the only child with a tablist role; the glider may or may
+// not be there yet, and its slot must not decide where the row is found.
+const stripElement = nav.children.find((child) => child?.props?.role === 'tablist')
+if (stripElement === undefined) throw new Error('the nav does not hold a tab strip')
+// Invoking TabBar already produced the elements; the pill row is one of them.
+const tabBar = stripElement
+if (tabBar.props.role !== 'tablist') throw new Error('the nav does not hold a tab strip')
+// No effect runs in this harness, so the glider has not measured itself and
+// renders nothing: a zero-width pill would be a visible sliver at the left
+// edge. What is left must be the four tabs and nothing else.
+const rendered = tabBar.children.filter((child) => child !== false && child !== null && child !== undefined)
+if (rendered.length !== 4) throw new Error(`expected 4 tabs, got ${rendered.length}`)
+if (rendered.some((child) => child.props?.className === 'dshPlatformGlider')) {
+  throw new Error('the glider rendered before it had a width to render at')
+}
+const tabIds = tabBar.children.filter((child) => child.props?.id !== undefined).map((child) => child.props.id)
 const wanted = ['usage', 'archive', 'memory', 'freemodel']
 if (tabIds.join() !== wanted.map((id) => `dshPlatformTab-${id}`).join()) {
   throw new Error(`tab ids: ${tabIds}`)
 }
-if (!tabBar.children.every((child) => child.props.role === 'tab' && child.props['aria-controls'].startsWith('dshPlatformPanel-'))) {
+const wired = tabBar.children.filter((child) => child.props?.role === 'tab')
+if (wired.length !== 4) throw new Error(`expected 4 wired tabs, got ${wired.length}`)
+if (wired.some((child) => child.props['aria-controls'].startsWith('dshPlatformPanel-') === false)) {
   throw new Error('tab wiring incomplete')
+}
+// The glider exists in the source and is decoration; it only reaches the DOM
+// once a tab has been measured, which needs a layout pass this harness has not
+// done. Asserting its presence here would assert the harness, not the page.
+if (source.includes('dshPlatformGlider') === false) throw new Error('the sliding glider is gone from the source')
+if (source.includes("'aria-hidden': 'true'") === false) {
+  throw new Error('the glider is not hidden from assistive technology')
 }
 if (panelHost.props.className !== 'dshPlatformPanels') throw new Error('panel host missing')
 const mounted = panelHost.children.filter(Boolean).map((panel) => panel.props.id)
@@ -316,6 +339,24 @@ if (seen.some((text) => text.startsWith('settings.desktopPlatform/loading'))) {
   throw new Error('the owner page is still reading the platform copy')
 }
 console.log("freeModel tab: the owner's own component, its own copy, one section in the nav")
+// The owner's page is a whole shell of its own: an aurora painted with
+// position:fixed behind itself, a sticky glass nav, its own spacing. A panel
+// that padded, gapped or clipped around it would cut that aurora off, so the
+// FreeModel panel is marked and styled bare.
+const ownPanel = findById(vendorTree, 'dshPlatformPanel-freemodel')
+if (ownPanel === null) throw new Error('the FreeModel panel is not there')
+if (ownPanel.props.className !== 'dshPlatformPanel isHost') {
+  throw new Error(`the FreeModel panel is wrapped: ${ownPanel.props.className}`)
+}
+let bareHost = false
+walkTree(vendorTree, (candidate) => {
+  if (candidate.props?.className === 'dshPlatformPanels isHost') bareHost = true
+})
+if (bareHost === false) throw new Error('the panel host is not the bare variant on this tab')
+if (ownStyle.textContent.includes('.dshPlatformPanel.isHost{padding:0') === false) {
+  throw new Error('the bare panel has no rule; the aurora would be clipped')
+}
+console.log('freeModel tab: mounted bare, so the owner\'s own shell paints whole')
 
 // And the host's loader must be back: the shim is a swap, not a replacement.
 if (typeof window.__ModuleLoader__?.load !== 'function') {
