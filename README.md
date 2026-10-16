@@ -111,6 +111,9 @@ Copy-Item -Recurse -Force "$P\plugins\<插件名>" "$P\node_modules\<插件名>"
 
 更新同一条路：`git pull` → 重跑脚本 → **重启应用**。
 
+上架插件列表（收录后市场就能搜到）的投稿文件与步骤在 `docs/market-entry.yml`：
+目录不是市场本地索引，而是由 `awesome-dsh-plugin` 仓库生成，收录要往那边提一个 PR。
+
 ## 更新
 
 ```powershell
@@ -143,7 +146,7 @@ node tools\vendor-our-free-model.mjs
 ## 自检
 
 ```powershell
-node .\test\platform-client.test.mjs .\dsh-comprehensive-platform\client.js
+node .\test\platform-client.test.mjs .\plugins\dsh-comprehensive-platform\client.js
 node .\test\archive-delete.test.mjs
 node .\test\localcoding-client.test.mjs .\dsh-localcoding-mcp\client.js
 node .\test\localcoding-process.test.mjs

@@ -1,5 +1,6 @@
 # 长期记忆
 
+- 2026-10-16 插件列表（市场目录）由 `awesome-dsh-plugin/awesome-dsh-plugin` 的 `data/plugins/*.yml` 生成，收录=往那边提一个 PR；其 CI 只认根包或 `packages/`·`plugins/`·`apps/` 子包的 `dsh.bundle`（所以插件在 `plugins/` 下），并卡仓库年龄 ≥1 天。投稿文件见 `docs/market-entry.yml`。
 - 2026-10-16 包名改成 `dsh-comprehensive-platform`：**包身份**（client bundle id、cordis.patch 行、服务端 `name`、profile 的 dependencies/bundles）全部跟着改；**`SETTINGS_NAMESPACE` 与设置页 section id 不改**——它们是别人机器上已有数据的键，改了等于静默丢设置/丢记忆。自检给这两个键各留常量并断言它们不随包名变。
 - 2026-10-16 宿主**拒绝同一 locale 命名空间注册两次**：`locale namespace "X" already has locale "zh"` 会在渲染进程抛错 → 整个 client bundle 加载失败 → profile 判定失败 → **应用打不开**（界面上只显示市场的 404 噪音）。两个地方都要容忍：内嵌的 owner 插件自己会注册 `settings.ourFreeModel`；且 `apply` 会跑多次（热重载 / profile 变更），自己的命名空间也会撞上。
 - 2026-10-16 FreeModel 的页面**不再自己写**：原版 `client.js` 内嵌进本插件，`tools/vendor-our-free-model.mjs` 重新生成并拼进 client.js，只改七处（bundle id / 页签记忆 / 导航行 / 默认分支 / 两处 slot 注册 / 公告 EventSource / 导出组件）。走过的弯路：挂载（它的页签条删不掉某一页）→ 照接口重写（差距大，用户不接受）。

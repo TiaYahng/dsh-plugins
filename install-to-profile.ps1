@@ -55,12 +55,18 @@ if (-not (Test-Path $manifestFile)) {
     throw "找不到 profile manifest: $manifestFile（DSH Desktop 启动过一次才会有）"
 }
 
-$all = Get-ChildItem $sourceRoot -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'package.json') } |
+$pluginDirs = @(
+    Get-ChildItem $sourceRoot -Directory -ErrorAction SilentlyContinue
+    foreach ($group in 'plugins', 'packages', 'apps') {
+        $holder = Join-Path $sourceRoot $group
+        if (Test-Path $holder) { Get-ChildItem $holder -Directory -ErrorAction SilentlyContinue }
+    }
+)
+$all = $pluginDirs | Where-Object { Test-Path (Join-Path $_.FullName 'package.json') } |
     Select-Object -ExpandProperty Name
 if (-not $all) {
-    throw "$sourceRoot 下没有可安装的插件目录"
+    throw "$sourceRoot 下没有找到插件（根目录与 plugins\packages\apps 下都要有带 package.json 的目录）"
 }
-
 # 只装其中一部分时，另一部分**保持原样**：它们同样是本仓库的插件，但这次没让人
 # 装它们，脚本就不该替人做决定把它们从 profile 里摘掉。
 $names = if ($Plugin) { $Plugin } else { $all }
@@ -77,9 +83,11 @@ Write-Host ''
 #    预检失败，应用会拒绝正常启动并回退 Safe Mode。
 New-Item -ItemType Directory -Force -Path $pluginsDir | Out-Null
 foreach ($name in $names) {
+    $source = $pluginDirs | Where-Object { $_.Name -eq $name } | Select-Object -First 1
+    if ($null -eq $source) { throw "找不到插件目录: $name" }
     $target = Join-Path $pluginsDir $name
     Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue
-    Copy-Item (Join-Path $sourceRoot $name) $target -Recurse -Force
+    Copy-Item $source.FullName $target -Recurse -Force
     Write-Host "  已复制 $name -> $target"
 }
 

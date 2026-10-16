@@ -33,7 +33,7 @@ FreeModel 的 8 个页面不占外层页签：外层只有 1 个 `freemodel` 页
 | 公告 EventSource 去掉 | 它自己的插件已经为整个应用面开了一条；再来一条就是同一份 feed 双份 toast 和系统通知 |
 | 导出 `exports.renderSettings` | 页面本身交出来，由本插件在自己的 section 里挂载 |
 
-`tools/vendor-our-free-model.mjs` 重新生成 `dsh-comprehensive-platform/vendor/our-free-model-client.js`
+`tools/vendor-our-free-model.mjs` 重新生成 `plugins/dsh-comprehensive-platform/vendor/our-free-model-client.js`
 并把它拼进 `client.js` 的 VENDOR 标记之间。**每处改动都按行内容定位，不按缩进定位**：
 源码是别人的，重排一次缩进不该让这个脚本变成空格游戏。原版更新后重跑即可。
 
@@ -158,6 +158,27 @@ HTTP 路由前缀 `/dsh-desktop/*` 同理：它是对外的字符串，自检与
 这三处在自检里各自有常量，并断言它们**不随包名变化**——否则下一次重命名会顺手把它们带走，
 而那种回归没有任何症状。
 
+## 上架插件列表：目录在另一个仓库里
+
+市场里的插件目录不是市场自己维护的索引：它每次启动都读
+`https://awesome-dsh-plugin.com/plugins.json`，而那份 JSON 由
+`awesome-dsh-plugin/awesome-dsh-plugin` 的 `data/plugins/*.yml` 生成。所以「能被搜到」
+= 往那个仓库提一个 PR 加一个文件，合并后站点自动重建。投稿文件已经备好在
+`docs/market-entry.yml`（头部是注释，末尾那段 YAML 就是全部内容）。
+
+它的 CI 会机械校验四件事，其中两件直接决定仓库该怎么摆：
+
+- **`dsh.bundle` 清单必须在根 `package.json` 或 `packages/` · `plugins/` · `apps/`
+  子包里。** 本插件因此从仓库根目录搬进了 `plugins/`——`dsh-comprehensive-platform/`
+  那样一个散在根下的目录，CI 看不见。只声明 `dsh.client` 也算不合格。
+- **仓库年龄 ≥1 天**（自动检查，挡的是「PR 前几分钟才建好」的仓库）。
+
+另外两条靠自觉：给仓库加 `dsh-plugin` topic（发现入口，已加），以及描述必须属实——
+维护者会读源码核对描述里的每一句话，包括数字与 API 名字。夸大是唯一的常见打回原因。
+
+列表条目指向的是子目录（`.../tree/main/plugins/dsh-comprehensive-platform`），文件名由
+`owner__repo--<子目录>` 拼出；一个 PR 最多加 3 条，多插件仓库也受这条限制。
+
 ## 安装 / 更新
 
 ```powershell
@@ -265,7 +286,7 @@ profile bundle "<name>" declares no dsh.bundle in its package.json
 ## 自检
 
 ```powershell
-node .\test\platform-client.test.mjs .\dsh-comprehensive-platform\client.js
+node .\test\platform-client.test.mjs .\plugins\dsh-comprehensive-platform\client.js
 node .\test\archive-delete.test.mjs
 node .\test\localcoding-client.test.mjs .\dsh-localcoding-mcp\client.js
 node .\test\localcoding-process.test.mjs
