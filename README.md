@@ -156,7 +156,7 @@ node tools\vendor-our-free-model.mjs
 ## 自检
 
 ```powershell
-node .\test\platform-client.test.mjs .\plugins\dsh-comprehensive-platform\client.js
+node .\test\platform-client.test.mjs .\dsh-comprehensive-platform\client.js
 node .\test\archive-delete.test.mjs
 node .\test\free-model-standalone.test.mjs
 node .\test\schema-calls.test.mjs

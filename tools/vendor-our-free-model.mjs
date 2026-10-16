@@ -308,9 +308,9 @@ ${edits.map((why) => `     · ${why}`).join('\n')}
 const forked = `${header}${lines.join('\n')}`
 
 fs.mkdirSync(`${root}/dsh-comprehensive-platform/vendor`, { recursive: true })
-fs.writeFileSync(`${root}/plugins/dsh-comprehensive-platform/vendor/our-free-model-client.js`, forked, 'utf8')
+fs.writeFileSync(`${root}/dsh-comprehensive-platform/vendor/our-free-model-client.js`, forked, 'utf8')
 
-const clientFile = `${root}/plugins/dsh-comprehensive-platform/client.js`
+const clientFile = `${root}/dsh-comprehensive-platform/client.js`
 const client = fs.readFileSync(clientFile, 'utf8')
 const begin = '    /* >>> VENDOR:BEGIN */'
 const end = '    /* <<< VENDOR:END */'
@@ -352,7 +352,7 @@ fs.writeFileSync(clientFile, spliced, 'utf8')
  */
 const API_PREFIX = '/api/comprehensive-platform/free-model'
 const upstreamDir = path.dirname(source)
-const freeModelDir = `${root}/plugins/dsh-comprehensive-platform/free-model`
+const freeModelDir = `${root}/dsh-comprehensive-platform/free-model`
 const serverEdits = []
 const serverNote = (why) => serverEdits.push(why)
 

@@ -1,7 +1,8 @@
 # 长期记忆
 
 - 2026-10-16 第 4 页的服务端也内嵌进本插件（`free-model/`，约 3.9 MB，来自 dsh-our-free-model）：「独立」= 装一个插件就完整，不能还要另装一个。四处必改：路由前缀换成我们的、`distributionOf` 恒为 `managed`（否则它的自更新/公告/热重载会改我们的字节）、`DATA_DIR_NAME` 换成自己的、版本号读上层 manifest。`llm` 必须是软依赖。自检 `test/free-model-standalone.test.mjs` 钉住这几条。
-- 2026-10-16 插件列表（市场目录）由 `awesome-dsh-plugin/awesome-dsh-plugin` 的 `data/plugins/*.yml` 生成，收录=往那边提一个 PR；其 CI 只认根包或 `packages/`·`plugins/`·`apps/` 子包的 `dsh.bundle`（所以插件在 `plugins/` 下），并卡仓库年龄 ≥1 天。投稿文件见 `docs/market-entry.yml`。
+- 2026-10-17 插件目录从 `plugins/dsh-comprehensive-platform/` 提到仓库根下 `dsh-comprehensive-platform/`，`plugins/` 已删除（用 `git mv` 保留历史）。**代价**：按 CI 白名单这个位置不合格（本仓库没有根 `package.json`），提列表 PR 前要么挪回 `plugins/`，要么补根包 `package.json`。
+- 2026-10-16 插件列表（市场目录）由 `awesome-dsh-plugin/awesome-dsh-plugin` 的 `data/plugins/*.yml` 生成，收录=往那边提一个 PR；其 CI 只认根包或 `packages/`·`plugins/`·`apps/` 子包的 `dsh.bundle`，并卡仓库年龄 ≥1 天。投稿文件见 `docs/market-entry.yml`。
 - 2026-10-16 包名改成 `dsh-comprehensive-platform`：**包身份**（client bundle id、cordis.patch 行、服务端 `name`、profile 的 dependencies/bundles）全部跟着改；**`SETTINGS_NAMESPACE` 与设置页 section id 不改**——它们是别人机器上已有数据的键，改了等于静默丢设置/丢记忆。自检给这两个键各留常量并断言它们不随包名变。
 - 2026-10-16 宿主**拒绝同一 locale 命名空间注册两次**：`locale namespace "X" already has locale "zh"` 会在渲染进程抛错 → 整个 client bundle 加载失败 → profile 判定失败 → **应用打不开**（界面上只显示市场的 404 噪音）。两个地方都要容忍：内嵌的 owner 插件自己会注册 `settings.ourFreeModel`；且 `apply` 会跑多次（热重载 / profile 变更），自己的命名空间也会撞上。
 - 2026-10-16 FreeModel 的页面**不再自己写**：原版 `client.js` 内嵌进本插件，`tools/vendor-our-free-model.mjs` 重新生成并拼进 client.js，只改七处（bundle id / 页签记忆 / 导航行 / 默认分支 / 两处 slot 注册 / 公告 EventSource / 导出组件）。走过的弯路：挂载（它的页签条删不掉某一页）→ 照接口重写（差距大，用户不接受）。
@@ -46,4 +47,4 @@
 - 2026-10-16 **`C:\Users\HP-XXX\.git` 存在**：用户整个家目录是一个 git 仓库，而 `git add -A` 是**整仓**范围而不是当前目录。所以任何工作区在 home 之下的 `git commit` 工具都会把整个家目录暂存进去。`server/native/git.js` 因此要求「仓库根必须等于工作区根」才允许写操作（`status`/`diff`/`log` 只读，照常并**报告真实仓库根**）。
 - 2026-10-16 schemastery **没有 `z.enum`**（`TypeError: z.enum is not a function`）；枚举值用 `z.string()` + 使用处校验。
 - 2026-10-16 `ctx.get('webServer')` 返回的是**服务本身**，没有 `.effect`/`.webServer.register`。要挂路由必须走 `ctx.inject(['webServer'], webCtx => { webCtx.effect(...); webCtx.webServer.register(...) })`。同理路由处理器拿不到自己的 origin，需要绝对 URL（给 Codex / 隧道用）时只能来自配置项 `publicBaseUrl`（默认 `http://127.0.0.1:19387`）。
-- 2026-10-16 本仓库**有别的 agent 在同时改**：它会重命名插件（`dsh-desktop-platform` → `dsh-comprehensive-platform`，并挪到 `plugins/`）、重写历史、改 README。提交前先 `git status` 只看自己的改动，**不要 `git add -A`**，也别去「修」别人的文件。
+- 2026-10-17 本仓库**有别的 agent 在同时改**：它会重命名插件（`dsh-desktop-platform` → `dsh-comprehensive-platform`，一度挪到 `plugins/`，现已提回仓库根）、重写历史、改 README。提交前先 `git status` 只看自己的改动，**不要 `git add -A`**（家目录 `C:\Users\HP-XXX\.git` 是另一个仓库，`-A` 会串），也别去「修」别人的文件。

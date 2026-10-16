@@ -37,7 +37,7 @@ const walk = (dir, out = []) => {
   return out
 }
 
-const plugins = ['plugins/dsh-comprehensive-platform', 'dsh-localcoding-mcp']
+const plugins = ['dsh-comprehensive-platform', 'dsh-localcoding-mcp']
 let scanned = 0
 for (const plugin of plugins) {
   const dir = path.join(root, plugin)
@@ -63,7 +63,7 @@ for (const plugin of plugins) {
 
 // Two more module-scope shapes that have cost this machine an app that would not
 // start. They are cheap to state and cheap to keep stated.
-const client = fs.readFileSync(path.join(root, 'plugins/dsh-comprehensive-platform/client.js'), 'utf8')
+const client = fs.readFileSync(path.join(root, 'dsh-comprehensive-platform/client.js'), 'utf8')
 if (/ctx\.locale\b/.test(client.replace(/\/\*[\s\S]*?\*\//g, '')) && !/const inject = \[[^\]]*'locale'/.test(client)) {
   throw new Error('the client reads ctx.locale without declaring it in inject')
 }

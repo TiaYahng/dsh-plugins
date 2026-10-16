@@ -334,7 +334,7 @@ console.log(`apply: 1 section (${entry.id}), tabs ${tabIds.length}, initial pane
 // list and its nav row no longer name the removed page, and it registers no
 // settings section of its own — this plugin owns the one in the nav.
 const fork = fs.readFileSync(
-  new URL('../plugins/dsh-comprehensive-platform/vendor/our-free-model-client.js', import.meta.url),
+  new URL('../dsh-comprehensive-platform/vendor/our-free-model-client.js', import.meta.url),
   'utf8'
 )
 if (/const TABS = \['free'/.test(fork)) throw new Error('the vendored page list still offers the removed page')

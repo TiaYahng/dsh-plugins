@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 *.log
 .local-memory.md
 .local-context.md
@@ -9,6 +9,7 @@
 # is not committed: this repository is public, and a push would publish someone
 # else's credentials. Its LICENSE and NOTICE.md are tracked anyway, so the
 # provenance of the vendored server is still on record.
-plugins/dsh-comprehensive-platform/free-model/vendor/channel-pack/
-!plugins/dsh-comprehensive-platform/free-model/vendor/channel-pack/LICENSE
-!plugins/dsh-comprehensive-platform/free-model/vendor/channel-pack/NOTICE.md
+dsh-comprehensive-platform/free-model/vendor/channel-pack/
+!dsh-comprehensive-platform/free-model/vendor/channel-pack/LICENSE
+!dsh-comprehensive-platform/free-model/vendor/channel-pack/NOTICE.md
+tools/.cache/

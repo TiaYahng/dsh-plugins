@@ -3,8 +3,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const fork = fs.readFileSync(path.join(root, 'plugins/dsh-comprehensive-platform/vendor/our-free-model-client.js'), 'utf8')
-const client = fs.readFileSync(path.join(root, 'plugins/dsh-comprehensive-platform/client.js'), 'utf8')
+const fork = fs.readFileSync(path.join(root, 'dsh-comprehensive-platform/vendor/our-free-model-client.js'), 'utf8')
+const client = fs.readFileSync(path.join(root, 'dsh-comprehensive-platform/client.js'), 'utf8')
 
 const must = ['function FreePage', 'CHANNEL_PROVIDERS', 'function SettingsPage', 'function ChannelsPage',
   'ofm_aurora', 'exports.renderSettings', 'function LedgerPage', 'function LogsPage', 'function GatewayPage',

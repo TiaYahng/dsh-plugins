@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
  */
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const plugin = path.join(root, 'plugins/dsh-comprehensive-platform')
+const plugin = path.join(root, 'dsh-comprehensive-platform')
 const read = (...parts) => fs.readFileSync(path.join(plugin, ...parts), 'utf8')
 
 const server = read('free-model', 'server.js')
